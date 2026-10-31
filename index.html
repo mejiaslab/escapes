@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expediente Escapista · Registro Privado de Escape Rooms</title>
+  <meta name="description" content="Panel privado de seguimiento, ranking, mapa y estadísticas de Escape Rooms conectado en tiempo real a Google Sheets." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet & MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Google Identity Services (OAuth 2.0) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <!-- =========================================================
+       PANTALLA DE ACCESO OAUTH CON GOOGLE CLOUD
+       ========================================================= -->
+  <main id="auth-gate" class="auth-gate">
+    <div class="auth-backdrop"></div>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-badge">
+          <span class="pulse-dot"></span>
+          <span>ACCESO PRIVADO · PERMISOS DE GOOGLE SHEETS</span>
+        </div>
+
+        <div class="auth-brand">
+          <img src="favicon.svg" alt="Candado Expediente Escapista" class="auth-logo" />
+          <div>
+            <h1>Expediente Escapista</h1>
+            <p class="auth-subtitle">Lectura directa y protegida · Hoja <strong>Escapes → Datos</strong></p>
+          </div>
+        </div>
+
+        <p class="auth-description">
+          Esta página no almacena ningún dato estático. Al iniciar sesión con Google, se comprueba en tiempo real que tu cuenta tenga <strong>permiso para ver la hoja de cálculo «Escapes»</strong> antes de desbloquear el panel.
+        </p>
+
+        <div class="auth-actions">
+          <button id="oauth-login-btn" type="button" class="btn-google-primary">
+            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+              <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+              <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+              <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+            </svg>
+            <span id="oauth-login-label">Iniciar sesión con Google</span>
+          </button>
+        </div>
+
+        <div id="auth-message" class="auth-message" hidden></div>
+
+        <footer class="auth-footer">
+          <span>🔒 Protegido por Google Drive / Sheets IAM · OAuth 2.0</span>
+        </footer>
+      </div>
+    </div>
+  </main>
+
+  <!-- =========================================================
+       APLICACIÓN PRINCIPAL (VISIBLE TRAS AUTENTICACIÓN OAUTH)
+       ========================================================= -->
+  <div id="app-shell" class="app-shell" hidden>
+    <!-- Barra de navegación fija -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a href="#resumen" class="brand-link">
+          <img src="favicon.svg" alt="" class="brand-icon" />
+          <div class="brand-text">
+            <span class="brand-title">Expediente Escapista</span>
+            <span class="brand-tag" id="data-source-badge">Cargando datos…</span>
+          </div>
+        </a>
+
+        <nav class="topnav" aria-label="Secciones principales">
+          <a href="#resumen">Equipo</a>
+          <a href="#ranking">Top 10</a>
+          <a href="#evolucion-mapa">Año y Mapa</a>
+          <a href="#visitadas">Visitadas</a>
+          <a href="#pendientes">Pendientes</a>
+          <a href="#estadisticas">Estadísticas</a>
+        </nav>
+
+        <div class="topbar-user">
+          <button id="sync-sheet-btn" type="button" class="btn-ghost btn-sm" title="Leer directamente de Google Sheets (Escapes → Datos)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+              <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+            </svg>
+            <span>Sincronizar Sheet</span>
+          </button>
+
+          <div class="user-chip" id="user-chip">
+            <img id="user-avatar" src="" alt="" class="user-avatar" hidden />
+            <span id="user-initials" class="user-initials">U</span>
+            <span id="user-name" class="user-name">Usuario</span>
+          </div>
+
+          <button id="logout-btn" type="button" class="btn-logout" title="Cerrar sesión OAuth">
+            Salir
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Aviso informativo opcional (ej. sincronización Google Sheets) -->
+    <div id="sync-banner" class="sync-banner" hidden></div>
+
+    <!-- Cabecera Hero -->
+    <section class="hero" id="resumen">
+      <div class="hero-bg"></div>
+      <div class="container hero-content">
+        <div class="hero-copy">
+          <div class="eyebrow">
+            <span class="eyebrow-key">🗝️ BITÁCORA OFICIAL DEL GRUPO</span>
+            <span id="upcoming-pill" class="upcoming-pill" hidden></span>
+          </div>
+          <h2>Crónicas de <span class="text-gradient">Escape Rooms</span></h2>
+          <p class="hero-lead">
+            Registro vivo de cada candado abierto, cada sala superada al límite y todos los destinos pendientes por conquistar juntos.
+          </p>
+        </div>
+
+        <!-- KPIs globales rápidos -->
+        <div class="hero-kpis" id="hero-kpis">
+          <!-- Renderizado dinámico -->
+        </div>
+      </div>
+    </section>
+
+    <main class="container main-sections">
+      <!-- 1. CONTEO TOTAL Y POR PERSONA -->
+      <section class="section-block" aria-labelledby="heading-members">
+        <div class="section-header">
+          <div>
+            <span class="section-kicker">RECUENTO DE SALAS</span>
+            <h3 id="heading-members">Salas registradas y visitadas por cada miembro</h3>
+          </div>
+          <p class="section-hint">Haz clic en cualquier integrante para filtrar sus salas en el historial inferior.</p>
+        </div>
+
+        <div id="members-grid" class="members-grid">
+          <!-- Renderizado dinámico -->
+        </div>
+      </section>
+
+      <!-- 2. RANKING TOP 10 MEJORES SALAS -->
+      <section class="section-block" id="ranking" aria-labelledby="heading-ranking">
+        <div class="section-header section-header-wrap">
+          <div>
+            <span class="section-kicker">HALL OF FAME · SOLO TOP 10</span>
+            <h3 id="heading-ranking">Ranking general de las 10 mejores salas</h3>
+          </div>
+          <div class="segmented-control" role="tablist" aria-label="Criterio de ranking">
+            <button type="button" class="seg-btn active" data-rank-mode="media">Media Global</button>
+            <button type="button" class="seg-btn" data-rank-mode="general">Nota General</button>
+            <button type="button" class="seg-btn" data-rank-mode="miguel">Miguel</button>
+            <button type="button" class="seg-btn" data-rank-mode="sara">Sara</button>
+          </div>
+        </div>
+
+        <div id="top10-grid" class="top10-grid">
+          <!-- Renderizado dinámico de exactamente 10 salas -->
+        </div>
+      </section>
+
+      <!-- 3. GRÁFICA POR AÑO Y MAPA INTERACTIVO -->
+      <section class="section-block" id="evolucion-mapa" aria-labelledby="heading-year-map">
+        <div class="section-header">
+          <div>
+            <span class="section-kicker">CRONOLOGÍA Y GEOGRAFÍA</span>
+            <h3 id="heading-year-map">Salas visitadas por año y mapa de conquistas</h3>
+          </div>
+        </div>
+
+        <div class="dual-panel-grid">
+          <!-- Panel Gráfica por Año -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>Evolución de salas visitadas por año</h4>
+                <p id="year-chart-subtitle" class="panel-sub">Ritmo anual y nota media obtenida</p>
+              </div>
+              <span id="undated-badge" class="subtle-badge" hidden></span>
+            </div>
+            <div class="chart-box chart-box-year">
+              <canvas id="yearChart"></canvas>
+            </div>
+            <div id="year-summary-strip" class="year-summary-strip"></div>
+          </article>
+
+          <!-- Panel Mapa de Salas Visitadas -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>Mapa de todas las salas visitadas</h4>
+                <p id="map-subtitle" class="panel-sub">Agrupación inteligente por ciudad y local</p>
+              </div>
+              <div class="map-quick-btns">
+                <button type="button" class="chip-btn active" data-map-view="spain">🇪🇸 España</button>
+                <button type="button" class="chip-btn" data-map-view="all">🌍 Todas (+ Praga)</button>
+                <button type="button" class="chip-btn" data-map-view="madrid">Madrid</button>
+                <button type="button" class="chip-btn" data-map-view="barcelona">Barcelona</button>
+                <button type="button" class="chip-btn" data-map-view="norte">Norte</button>
+                <button type="button" class="chip-btn" data-map-view="valencia">Valencia</button>
+              </div>
+            </div>
+            <div id="visited-map" class="visited-map" aria-label="Mapa interactivo de salas visitadas"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 4. LISTADO DE SALAS VISITADAS (FECHA DESCENDIENTE + PAGINACIÓN) -->
+      <section class="section-block" id="visitadas" aria-labelledby="heading-visited">
+        <div class="section-header section-header-wrap">
+          <div>
+            <span class="section-kicker">HISTORIAL COMPLETO</span>
+            <h3 id="heading-visited">Salas visitadas <span id="visited-count-pill" class="count-pill">0</span></h3>
+          </div>
+
+          <div class="filters-bar">
+            <div class="search-field">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input id="visited-search" type="search" placeholder="Buscar sala, empresa o ciudad…" />
+            </div>
+
+            <select id="visited-member-filter" class="select-input" aria-label="Filtrar por miembro">
+              <option value="ALL">Todos los miembros</option>
+              <option value="S">Sara (S)</option>
+              <option value="M">Miguel (M)</option>
+              <option value="R">Rafa (R)</option>
+              <option value="A">Antonio (A)</option>
+              <option value="J">Joan (J)</option>
+              <option value="+">Con invitados (+)</option>
+            </select>
+
+            <select id="visited-year-filter" class="select-input" aria-label="Filtrar por año">
+              <option value="ALL">Todos los años</option>
+            </select>
+
+            <select id="visited-page-size" class="select-input" aria-label="Salas por página">
+              <option value="10" selected>10 / pág.</option>
+              <option value="20">20 / pág.</option>
+              <option value="50">50 / pág.</option>
+            </select>
+
+            <button id="visited-reset-btn" type="button" class="btn-ghost btn-sm" hidden>Limpiar filtro</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-scroll">
+            <table class="data-table" id="visited-table">
+              <thead>
+                <tr>
+                  <th>Fecha ↓</th>
+                  <th>Sala y Empresa</th>
+                  <th>Ubicación</th>
+                  <th>Temática</th>
+                  <th>De nosotros</th>
+                  <th>Resultado</th>
+                  <th class="col-num">Nota Media</th>
+                </tr>
+              </thead>
+              <tbody id="visited-tbody">
+                <!-- Filas paginadas -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination-bar" id="visited-pagination">
+            <!-- Controles de paginación -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. LISTADO DE SALAS PENDIENTES CON FILTRO POR PROVINCIAS -->
+      <section class="section-block" id="pendientes" aria-labelledby="heading-pending">
+        <div class="section-header section-header-wrap">
+          <div>
+            <span class="section-kicker">PRÓXIMOS OBJETIVOS</span>
+            <h3 id="heading-pending">Salas pendientes <span id="pending-count-pill" class="count-pill count-pill-amber">0</span></h3>
+          </div>
+
+          <div class="filters-bar">
+            <div class="search-field">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input id="pending-search" type="search" placeholder="Buscar sala, empresa o premio TERPECA…" />
+            </div>
+
+            <select id="pending-province-select" class="select-input" aria-label="Filtrar pendientes por provincia">
+              <option value="ALL">Todas las provincias</option>
+            </select>
+
+            <select id="pending-theme-select" class="select-input" aria-label="Filtrar pendientes por temática">
+              <option value="ALL">Todas las temáticas</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Chips rápidos de provincias -->
+        <div id="pending-province-chips" class="province-chips" role="group" aria-label="Filtro rápido por provincia">
+          <!-- Renderizado dinámico -->
+        </div>
+
+        <div id="pending-grid" class="pending-grid">
+          <!-- Tarjetas de salas pendientes -->
+        </div>
+      </section>
+
+      <!-- 6. ESTADÍSTICAS ADICIONALES RELEVANTES -->
+      <section class="section-block" id="estadisticas" aria-labelledby="heading-stats">
+        <div class="section-header">
+          <div>
+            <span class="section-kicker">LABORATORIO ESTADÍSTICO</span>
+            <h3 id="heading-stats">Radiografía avanzada del grupo</h3>
+          </div>
+        </div>
+
+        <div class="stats-bento">
+          <!-- Radar 7 criterios -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>Perfil de valoraciones (7 dimensiones)</h4>
+                <p class="panel-sub">Comparativa Media Global vs Sara vs Miguel</p>
+              </div>
+            </div>
+            <div class="chart-box chart-box-radar">
+              <canvas id="radarChart"></canvas>
+            </div>
+          </article>
+
+          <!-- Temáticas: Visitadas vs Pendientes -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>ADN de temáticas (Jugadas vs Pendientes)</h4>
+                <p class="panel-sub">Géneros más frecuentados y lo que viene en camino</p>
+              </div>
+            </div>
+            <div class="chart-box chart-box-themes">
+              <canvas id="themesChart"></canvas>
+            </div>
+          </article>
+
+          <!-- Alineaciones más habituales del equipo -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>Alineaciones míticas del equipo</h4>
+                <p class="panel-sub">Combinaciones exactas de «De nosotros» más repetidas</p>
+              </div>
+            </div>
+            <div id="squads-list" class="stat-bars-list"></div>
+          </article>
+
+          <!-- Empresas más visitadas y mejor valoradas -->
+          <article class="panel-card">
+            <div class="panel-card-head">
+              <div>
+                <h4>Sellos y empresas de referencia</h4>
+                <p class="panel-sub">Creadores con 2 o más salas jugadas ordenados por nota media</p>
+              </div>
+            </div>
+            <div id="companies-list" class="stat-bars-list"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container site-footer-inner">
+        <span>🗝️ <strong>Expediente Escapista</strong> · Hoja Google Sheets <code>Escapes / Datos</code></span>
+        <span id="footer-sync-info">Protegido con Google Cloud OAuth 2.0</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- =========================================================
+       MODAL DE DETALLE DE SALA
+       ========================================================= -->
+  <div id="room-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-room-title">
+    <div class="modal-card">
+      <button id="modal-close-btn" type="button" class="modal-close" aria-label="Cerrar ficha">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Scripts externos -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- Datos geográficos y lógica de la aplicación -->
+  <script src="locations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
