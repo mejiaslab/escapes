@@ -1,5 +1,6 @@
 /* =========================================================
-   EXPEDIENTE ESCAPISTA — LÓGICA PRINCIPAL, OAUTH Y VISUALIZACIÓN
+   EXPEDIENTE ESCAPISTA — LÓGICA PRINCIPAL, NAVEGACIÓN LATERAL,
+   DASHBOARD RESUMEN, OAUTH 2.0 Y VISUALIZACIÓN EN VIVO
    ========================================================= */
 
 (function () {
@@ -33,10 +34,30 @@
     "General"
   ];
 
+  const SECTIONS = {
+    dashboard: { kicker: "VISTA GENERAL", title: "Dashboard · Resumen" },
+    visitadas: { kicker: "CATÁLOGO DE SALAS", title: "Salas Visitadas" },
+    pendientes: { kicker: "CATÁLOGO DE SALAS", title: "Salas Pendientes" },
+    ranking: { kicker: "HALL OF FAME", title: "Ranking Top 10" },
+    mapa: { kicker: "CARTOGRAFÍA ESCAPISTA", title: "Mapa de Conquistas" },
+    equipo: { kicker: "ANÁLISIS Y GRUPO", title: "Equipo y Alineaciones" },
+    estadisticas: { kicker: "LABORATORIO ESTADÍSTICO", title: "Estadísticas" }
+  };
+
+  const HASH_ALIASES = {
+    resumen: "dashboard",
+    inicio: "dashboard",
+    "evolucion-mapa": "mapa"
+  };
+
   // Estado global de la aplicación
   const state = {
     user: null,
     tokenClient: null,
+    activeSection: "dashboard",
+    hasData: false,
+    needsMapRender: false,
+    needsChartsRender: false,
     allRooms: [],
     visitedRooms: [],
     pendingRooms: [],
@@ -149,7 +170,7 @@
     const cityKey = normalizeKey(room.ciudad);
     const provKey = normalizeKey(room.provincia);
 
-    let base =
+    const base =
       locs.venues[`${empKey}|${cityKey}`] ||
       locs.cities[cityKey] ||
       locs.provinces[provKey] ||
@@ -167,6 +188,105 @@
     const angle = idx * 2.399963;
     const radius = 0.0014 * Math.sqrt(idx);
     return [base[0] + radius * Math.cos(angle), base[1] + radius * Math.sin(angle)];
+  }
+
+  /* ---------------------------------------------------------
+     NAVEGACIÓN POR SECCIONES Y CONTROL DEL MENÚ LATERAL
+     --------------------------------------------------------- */
+
+  function resolveSectionFromHash() {
+    const raw = (window.location.hash || "").replace(/^#/, "").trim().toLowerCase();
+    if (!raw) return "dashboard";
+    if (SECTIONS[raw]) return raw;
+    if (HASH_ALIASES[raw]) return HASH_ALIASES[raw];
+    return "dashboard";
+  }
+
+  function openMobileSidebar() {
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    const openBtn = document.getElementById("sidebar-open-btn");
+    if (sidebar) sidebar.classList.add("is-open");
+    if (backdrop) backdrop.hidden = false;
+    if (openBtn) openBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMobileSidebar() {
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    const openBtn = document.getElementById("sidebar-open-btn");
+    if (sidebar) sidebar.classList.remove("is-open");
+    if (backdrop) backdrop.hidden = true;
+    if (openBtn) openBtn.setAttribute("aria-expanded", "false");
+  }
+
+  function refreshActiveSectionVisuals() {
+    if (!state.hasData) return;
+
+    if (state.activeSection === "mapa") {
+      if (state.needsMapRender || !state.map) {
+        renderMap();
+        state.needsMapRender = false;
+      } else {
+        state.map.invalidateSize();
+        setTimeout(() => state.map && state.map.invalidateSize(), 180);
+      }
+    }
+
+    if (state.activeSection === "estadisticas") {
+      if (state.needsChartsRender) {
+        renderYearChart();
+        renderExtraStats();
+        state.needsChartsRender = false;
+      } else {
+        if (state.charts.year) state.charts.year.resize();
+        if (state.charts.radar) state.charts.radar.resize();
+        if (state.charts.themes) state.charts.themes.resize();
+      }
+    }
+  }
+
+  function navigateToSection(sectionId, options = {}) {
+    const { updateHash = true, scrollTop = true } = options;
+    const target = SECTIONS[sectionId] ? sectionId : "dashboard";
+    state.activeSection = target;
+
+    document.querySelectorAll(".app-view[data-section]").forEach((sec) => {
+      sec.hidden = sec.getAttribute("data-section") !== target;
+    });
+
+    document.querySelectorAll(".sidebar-link[data-section-link]").forEach((link) => {
+      const isMatch = link.getAttribute("data-section-link") === target;
+      link.classList.toggle("active", isMatch);
+      if (isMatch) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+
+    const meta = SECTIONS[target];
+    const kickerEl = document.getElementById("topbar-section-kicker");
+    const titleEl = document.getElementById("topbar-section-title");
+    if (kickerEl) kickerEl.textContent = meta.kicker;
+    if (titleEl) titleEl.textContent = meta.title;
+
+    closeMobileSidebar();
+
+    if (updateHash) {
+      const desiredHash = `#${target}`;
+      if (window.location.hash !== desiredHash) {
+        history.pushState(null, "", desiredHash);
+      }
+    }
+
+    if (scrollTop) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    requestAnimationFrame(() => {
+      refreshActiveSectionVisuals();
+    });
   }
 
   /* ---------------------------------------------------------
@@ -291,6 +411,7 @@
     state.pendingRooms = pendingRooms;
     state.upcomingRooms = upcomingRooms;
     state.draftRooms = draftRooms;
+    state.hasData = true;
   }
 
   /* ---------------------------------------------------------
@@ -333,6 +454,9 @@
       localStorage.removeItem("escapes_live_sheet_v1");
     } catch (_) {}
 
+    state.hasData = false;
+    state.needsMapRender = false;
+    state.needsChartsRender = false;
     state.allRooms = [];
     state.visitedRooms = [];
     state.pendingRooms = [];
@@ -346,18 +470,32 @@
 
     [
       "hero-kpis",
+      "dashboard-podium",
+      "dashboard-recent",
+      "dashboard-team-summary",
+      "dashboard-pulse",
       "members-grid",
       "top10-grid",
       "visited-tbody",
       "visited-pagination",
+      "upcoming-section-wrap",
       "pending-grid",
       "pending-province-chips",
+      "geo-provinces-list",
+      "geo-cities-list",
       "squads-list",
+      "team-insights-list",
       "companies-list",
+      "ratings-dist-list",
       "modal-body"
     ].forEach((id) => {
       const node = document.getElementById(id);
       if (node) node.innerHTML = "";
+    });
+
+    ["nav-badge-visited", "nav-badge-pending", "nav-badge-map"].forEach((id) => {
+      const badge = document.getElementById(id);
+      if (badge) badge.textContent = "0";
     });
   }
 
@@ -544,7 +682,7 @@
         })
       : "";
 
-    badge.textContent = `● Google Sheets en vivo (${timeText})`;
+    badge.textContent = `● En vivo (${timeText})`;
     badge.style.color = "#34d399";
     footerInfo.textContent = `Acceso verificado (${user.email || user.name}) · Leído en directo de Google Sheets`;
   }
@@ -565,6 +703,10 @@
 
       parseSheetValues(dataset.values);
       updateUserHeader(dataset);
+
+      // Mantener sección del hash si el usuario entró con enlace directo, o Dashboard por defecto
+      const initialSection = resolveSectionFromHash();
+      navigateToSection(initialSection, { updateHash: false, scrollTop: false });
       renderAll();
     } catch (err) {
       setLoginLoading(false);
@@ -627,23 +769,69 @@
   }
 
   /* ---------------------------------------------------------
-     RENDERIZADO DE TODAS LAS SECCIONES DEL DASHBOARD
+     RENDERIZADO GENERAL Y CONTADORES DEL MENÚ LATERAL
      --------------------------------------------------------- */
 
   function renderAll() {
+    updateSidebarBadges();
     renderHeroKpis();
+    renderDashboardSummary();
     renderMembersCount();
+    renderTeamSectionExtras();
     renderTop10();
-    renderYearChart();
-    renderMap();
+    renderGeoBreakdown();
     populateVisitedFilters();
     renderVisitedTable();
+    renderUpcomingSection();
     populatePendingFilters();
     renderPendingList();
-    renderExtraStats();
+
+    // El mapa y las gráficas en canvas se renderizan cuando su vista está visible para garantizar dimensiones exactas
+    state.needsMapRender = true;
+    state.needsChartsRender = true;
+    refreshActiveSectionVisuals();
   }
 
-  // 0. Hero KPIs y próxima reserva
+  function updateSidebarBadges() {
+    const uniqueCities = new Set(state.visitedRooms.map((r) => normalizeKey(r.ciudad))).size;
+    document.getElementById("nav-badge-visited").textContent = String(state.visitedRooms.length);
+    document.getElementById("nav-badge-pending").textContent = String(state.pendingRooms.length);
+    document.getElementById("nav-badge-map").textContent = `${uniqueCities}`;
+    document.getElementById("nav-badge-team").textContent = String(MEMBERS.length);
+
+    const quickStats = document.getElementById("sidebar-quick-stats");
+    if (quickStats) {
+      quickStats.textContent = `${state.visitedRooms.length} visitadas · ${state.pendingRooms.length} pendientes`;
+    }
+  }
+
+  function renderTeamDotsHtml(deNosotros) {
+    if (!deNosotros) return '<span class="date-unknown">—</span>';
+    const order = ["S", "M", "R", "A", "J", "+"];
+    return `<span class="team-dots">${order
+      .filter((ch) => deNosotros.includes(ch))
+      .map((ch) => {
+        const cls = ch === "+" ? "dot-plus" : `dot-${ch}`;
+        const memberName = MEMBERS.find((m) => m.key === ch)?.name || ch;
+        return `<span class="team-dot ${cls}" title="${escapeHtml(memberName)}">${ch}</span>`;
+      })
+      .join("")}</span>`;
+  }
+
+  function filterVisitedByMemberAndOpen(memberKey) {
+    state.visitedFilter.member = memberKey;
+    state.visitedFilter.page = 1;
+    const select = document.getElementById("visited-member-filter");
+    if (select) select.value = memberKey;
+    renderMembersCount();
+    renderVisitedTable();
+    navigateToSection("visitadas");
+  }
+
+  /* ---------------------------------------------------------
+     SECCIÓN 1 (PRINCIPAL): DASHBOARD CON RESUMEN EJECUTIVO
+     --------------------------------------------------------- */
+
   function renderHeroKpis() {
     const totalReg = state.allRooms.length;
     const totalVis = state.visitedRooms.length;
@@ -656,7 +844,8 @@
 
     const exOk = state.visitedRooms.filter((r) => r.exito === "S").length;
     const exFail = state.visitedRooms.filter((r) => r.exito === "N").length;
-    const successPct = exOk + exFail > 0 ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",") : "—";
+    const successPct =
+      exOk + exFail > 0 ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",") : "—";
 
     const uniqueCities = new Set(state.visitedRooms.map((r) => normalizeKey(r.ciudad))).size;
     const uniqueProvs = new Set(state.visitedRooms.map((r) => normalizeKey(r.provincia))).size;
@@ -671,34 +860,293 @@
     }
 
     const extraNote = state.draftRooms.length
-      ? `${totalVis} jugadas · ${totalPend} pendientes · ${state.upcomingRooms.length + state.draftRooms.length} en agenda/borrador`
+      ? `${totalVis} jugadas · ${totalPend} pendientes · ${state.upcomingRooms.length + state.draftRooms.length} en agenda`
       : `${totalVis} jugadas · ${totalPend} pendientes`;
 
-    document.getElementById("hero-kpis").innerHTML = `
-      <div class="kpi-tile kpi-highlight">
-        <div class="kpi-label">Salas Registradas</div>
+    const kpisContainer = document.getElementById("hero-kpis");
+    kpisContainer.innerHTML = `
+      <button type="button" class="kpi-tile kpi-highlight" data-nav-target="estadisticas">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Salas Registradas</span>
+          <span class="kpi-arrow">→</span>
+        </div>
         <div class="kpi-value">${totalReg}</div>
         <div class="kpi-sub">${escapeHtml(extraNote)}</div>
-      </div>
-      <div class="kpi-tile">
-        <div class="kpi-label">Salas Visitadas</div>
+      </button>
+
+      <button type="button" class="kpi-tile" data-nav-target="visitadas">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Salas Visitadas</span>
+          <span class="kpi-arrow">→</span>
+        </div>
         <div class="kpi-value">${totalVis}</div>
         <div class="kpi-sub">Éxito registrado: <strong>${successPct}%</strong> (${exOk}/${exOk + exFail})</div>
-      </div>
-      <div class="kpi-tile">
-        <div class="kpi-label">Valoración Media</div>
+      </button>
+
+      <button type="button" class="kpi-tile" data-nav-target="ranking">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Valoración Media</span>
+          <span class="kpi-arrow">→</span>
+        </div>
         <div class="kpi-value">${fmtScore(globalAvg)} <small style="font-size:0.52em;color:var(--gold)">/ 5</small></div>
-        <div class="kpi-sub">${rated.length} salas puntuadas</div>
-      </div>
-      <div class="kpi-tile">
-        <div class="kpi-label">Mapa Conquistado</div>
+        <div class="kpi-sub">${rated.length} salas puntuadas · Ver Top 10</div>
+      </button>
+
+      <button type="button" class="kpi-tile" data-nav-target="mapa">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Mapa Conquistado</span>
+          <span class="kpi-arrow">→</span>
+        </div>
         <div class="kpi-value">${uniqueCities} <small style="font-size:0.5em;color:var(--text-secondary)">ciudades</small></div>
         <div class="kpi-sub">${uniqueProvs} provincias / países</div>
-      </div>
+      </button>
     `;
+
+    kpisContainer.querySelectorAll("[data-nav-target]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        navigateToSection(btn.getAttribute("data-nav-target"));
+      });
+    });
   }
 
-  // 1. Conteo total y por cada uno de nosotros
+  function renderDashboardSummary() {
+    // 1. Podio Top 3 (Media Global)
+    const top3 = state.visitedRooms
+      .filter((r) => r.media.media !== null)
+      .slice()
+      .sort(
+        (a, b) =>
+          (b.media.media ?? 0) - (a.media.media ?? 0) ||
+          (b.media.general ?? 0) - (a.media.general ?? 0) ||
+          a.id - b.id
+      )
+      .slice(0, 3);
+
+    const podiumEl = document.getElementById("dashboard-podium");
+    podiumEl.innerHTML = top3.length
+      ? top3
+          .map((r, idx) => {
+            const medal = idx === 0 ? "🥇 #1" : idx === 1 ? "🥈 #2" : "🥉 #3";
+            const poster = getPosterUrl(r.sala);
+            const thumbStyle = poster
+              ? `background-image:url('${poster}')`
+              : `background:${fallbackGradient(r.tematica)}`;
+
+            return `
+              <button type="button" class="dash-row" data-room-id="${r.id}">
+                <div class="dash-podium-thumb" style="${thumbStyle}">
+                  <span class="dash-medal-badge">${medal}</span>
+                </div>
+                <div class="dash-row-main">
+                  <div class="dash-row-title">${escapeHtml(r.sala)}</div>
+                  <div class="dash-row-sub">${escapeHtml(r.empresa)} · 📍 ${escapeHtml(r.ciudad)}</div>
+                </div>
+                <div class="dash-row-right">
+                  <span class="score-pill">★ ${fmtScore(r.media.media)}</span>
+                  <span class="dash-date-tag">${escapeHtml(r.fechaDisplay)}</span>
+                </div>
+              </button>
+            `;
+          })
+          .join("")
+      : `<p class="panel-sub">No hay salas valoradas todavía.</p>`;
+
+    podiumEl.querySelectorAll("[data-room-id]").forEach((btn) => {
+      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+    });
+
+    // 2. Actividad reciente (últimas 5 salas visitadas)
+    const recent5 = state.visitedRooms.slice(0, 5);
+    const recentEl = document.getElementById("dashboard-recent");
+    recentEl.innerHTML = recent5.length
+      ? recent5
+          .map((r) => {
+            const statusBadge =
+              r.exito === "S"
+                ? `<span class="status-ok">✓ Superada</span>`
+                : r.exito === "N"
+                ? `<span class="status-fail">✕ No superada</span>`
+                : "";
+
+            return `
+              <button type="button" class="dash-row" data-room-id="${r.id}">
+                <div class="dash-row-main">
+                  <div class="dash-row-title">${escapeHtml(r.sala)}</div>
+                  <div class="dash-row-sub">${escapeHtml(r.empresa)} · ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})</div>
+                </div>
+                <div class="dash-row-right">
+                  ${
+                    r.media.media !== null
+                      ? `<span class="score-pill">★ ${fmtScore(r.media.media)}</span>`
+                      : statusBadge
+                  }
+                  <span class="dash-date-tag">${escapeHtml(r.fechaDisplay)}</span>
+                </div>
+              </button>
+            `;
+          })
+          .join("")
+      : `<p class="panel-sub">Sin salas visitadas registradas.</p>`;
+
+    recentEl.querySelectorAll("[data-room-id]").forEach((btn) => {
+      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+    });
+
+    // 3. Resumen compacto del equipo
+    const totalVis = state.visitedRooms.length || 1;
+    const teamSumEl = document.getElementById("dashboard-team-summary");
+    teamSumEl.innerHTML = MEMBERS.map((m) => {
+      const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
+      const count = rooms.length;
+      const pct = Math.round((count / totalVis) * 100);
+      const rated = rooms.filter((r) => r.media.media !== null);
+      const avg = rated.length ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length : null;
+
+      return `
+        <button type="button" class="dash-member-btn" data-dash-member="${m.key}">
+          <div class="member-avatar-badge" style="background:${m.bg};color:${m.color}">${m.key}</div>
+          <div class="dash-member-info">
+            <div class="dash-member-top">
+              <span class="dash-member-name">${escapeHtml(m.name)}</span>
+              <span class="dash-member-num" style="color:${m.color}">${count}</span>
+            </div>
+            <div class="member-progress-track" style="margin-top:0.3rem">
+              <div class="member-progress-bar" style="width:${Math.min(100, pct)}%;background:${m.color}"></div>
+            </div>
+            <div class="dash-member-sub">
+              <span>${pct}% jugadas</span>
+              <span>★ ${fmtScore(avg)}</span>
+            </div>
+          </div>
+        </button>
+      `;
+    }).join("");
+
+    teamSumEl.querySelectorAll("[data-dash-member]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filterVisitedByMemberAndOpen(btn.getAttribute("data-dash-member"));
+      });
+    });
+
+    // 4. Hoja de ruta (próximas reservas, pulso anual y provincias pendientes top)
+    const byYear = {};
+    state.visitedRooms.forEach((r) => {
+      if (r.year && !r.undated) {
+        byYear[r.year] = (byYear[r.year] || 0) + 1;
+      }
+    });
+    const currentYear = new Date().getFullYear();
+    const currentYearCount = byYear[currentYear] || 0;
+
+    let peakYear = "—";
+    let peakCount = 0;
+    Object.entries(byYear).forEach(([y, cnt]) => {
+      if (cnt > peakCount) {
+        peakCount = cnt;
+        peakYear = y;
+      }
+    });
+
+    const compStats = {};
+    state.visitedRooms.forEach((r) => {
+      if (!r.empresa || r.empresa === "Sin empresa" || r.media.media === null) return;
+      const key = normalizeKey(r.empresa);
+      if (!compStats[key]) compStats[key] = { name: r.empresa, scores: [] };
+      compStats[key].scores.push(r.media.media);
+    });
+    const bestComp = Object.values(compStats)
+      .filter((c) => c.scores.length >= 2)
+      .map((c) => ({
+        name: c.name,
+        avg: c.scores.reduce((s, v) => s + v, 0) / c.scores.length
+      }))
+      .sort((a, b) => b.avg - a.avg)[0];
+
+    const provCounts = {};
+    let awardedCount = 0;
+    state.pendingRooms.forEach((r) => {
+      provCounts[r.provincia] = (provCounts[r.provincia] || 0) + 1;
+      if (r.masInfo) awardedCount += 1;
+    });
+    const topPendingProvs = Object.entries(provCounts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+      .slice(0, 6);
+
+    const upcomingBoxHtml = state.upcomingRooms.length
+      ? `<div class="pulse-upcoming-box">
+          <strong>📅 Próxima cita confirmada:</strong> ${escapeHtml(state.upcomingRooms[0].sala)} · ${escapeHtml(
+          state.upcomingRooms[0].empresa
+        )} (${escapeHtml(state.upcomingRooms[0].ciudad)}) el <strong>${escapeHtml(
+          state.upcomingRooms[0].fechaDisplay
+        )}</strong>
+        </div>`
+      : "";
+
+    const pulseEl = document.getElementById("dashboard-pulse");
+    pulseEl.innerHTML = `
+      ${upcomingBoxHtml}
+
+      <div class="pulse-mini-grid">
+        <div class="pulse-stat-box">
+          <div class="pulse-stat-label">En ${currentYear}</div>
+          <div class="pulse-stat-val">${currentYearCount} salas</div>
+          <div class="pulse-stat-hint">jugadas este año</div>
+        </div>
+        <div class="pulse-stat-box">
+          <div class="pulse-stat-label">Año récord</div>
+          <div class="pulse-stat-val">${peakYear}</div>
+          <div class="pulse-stat-hint">${peakCount} salas superadas</div>
+        </div>
+        <div class="pulse-stat-box">
+          <div class="pulse-stat-label">Sello referente</div>
+          <div class="pulse-stat-val" title="${escapeHtml(bestComp?.name || "—")}">${escapeHtml(bestComp?.name || "—")}</div>
+          <div class="pulse-stat-hint">${bestComp ? `★ ${fmtScore(bestComp.avg)} media` : "≥ 2 salas"}</div>
+        </div>
+      </div>
+
+      <div class="pulse-provs-block">
+        <div class="pulse-provs-title">
+          🎯 Principales destinos pendientes ${awardedCount ? `· <span style="color:var(--gold-bright)">${awardedCount} con mención/premio</span>` : ""}
+        </div>
+        <div class="province-chips">
+          ${topPendingProvs
+            .map(
+              ([prov, cnt]) =>
+                `<button type="button" class="prov-chip" data-dash-prov="${escapeHtml(prov)}">${escapeHtml(
+                  prov
+                )} <b>${cnt}</b></button>`
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div class="pulse-quick-links">
+        <button type="button" class="btn-link-action" data-nav-target="mapa">🗺️ Abrir mapa interactivo →</button>
+        <button type="button" class="btn-link-action" data-nav-target="estadisticas">📊 Ver estadísticas avanzadas →</button>
+      </div>
+    `;
+
+    pulseEl.querySelectorAll("[data-dash-prov]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const prov = chip.getAttribute("data-dash-prov");
+        state.pendingFilter.province = prov;
+        populatePendingFilters();
+        renderPendingList();
+        navigateToSection("pendientes");
+      });
+    });
+
+    pulseEl.querySelectorAll("[data-nav-target]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        navigateToSection(btn.getAttribute("data-nav-target"));
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------
+     SECCIÓN EQUIPO: TARJETAS DE MIEMBROS Y ALINEACIONES
+     --------------------------------------------------------- */
+
   function renderMembersCount() {
     const totalVis = state.visitedRooms.length || 1;
     const totalReg = state.allRooms.length;
@@ -713,7 +1161,9 @@
         <div class="member-count">${totalReg}</div>
         <div class="member-name-label">Total registradas</div>
         <div class="member-progress-track">
-          <div class="member-progress-bar" style="width:${Math.round((state.visitedRooms.length / Math.max(totalReg, 1)) * 100)}%;background:var(--gold)"></div>
+          <div class="member-progress-bar" style="width:${Math.round(
+            (state.visitedRooms.length / Math.max(totalReg, 1)) * 100
+          )}%;background:var(--gold)"></div>
         </div>
         <div class="member-meta">
           <span>Completadas: <strong>${state.visitedRooms.length}</strong></span>
@@ -727,19 +1177,15 @@
       const count = rooms.length;
       const pct = ((count / totalVis) * 100).toFixed(1).replace(".", ",");
       const rated = rooms.filter((r) => r.media.media !== null);
-      const avg = rated.length
-        ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length
-        : null;
+      const avg = rated.length ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length : null;
 
-      // Temática más jugada por este miembro
       const themeCounts = {};
       rooms.forEach((r) => {
         if (r.tematica && r.tematica !== "Sin especificar") {
           themeCounts[r.tematica] = (themeCounts[r.tematica] || 0) + 1;
         }
       });
-      const favTheme =
-        Object.entries(themeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      const favTheme = Object.entries(themeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
 
       const isActive = activeMember === m.key ? "active-filter" : "";
 
@@ -768,19 +1214,85 @@
     container.querySelectorAll("button[data-member-key]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-member-key");
-        state.visitedFilter.member = state.visitedFilter.member === key ? "ALL" : key;
-        state.visitedFilter.page = 1;
-        document.getElementById("visited-member-filter").value = state.visitedFilter.member;
-        renderMembersCount();
-        renderVisitedTable();
-        if (state.visitedFilter.member !== "ALL") {
-          document.getElementById("visitadas").scrollIntoView({ behavior: "smooth" });
-        }
+        filterVisitedByMemberAndOpen(key);
       });
     });
   }
 
-  // 2. Ranking Top 10 (estrictamente 10 salas)
+  function renderTeamSectionExtras() {
+    // Alineaciones míticas del equipo
+    const squadCounts = {};
+    state.visitedRooms.forEach((r) => {
+      if (!r.deNosotros) return;
+      squadCounts[r.deNosotros] = (squadCounts[r.deNosotros] || 0) + 1;
+    });
+    const topSquads = Object.entries(squadCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 7);
+    const maxSquad = topSquads[0]?.[1] || 1;
+
+    const nameMap = { S: "Sara", M: "Miguel", R: "Rafa", A: "Antonio", J: "Joan", "+": "Invitados" };
+    document.getElementById("squads-list").innerHTML = topSquads
+      .map(([code, cnt]) => {
+        const readable = code
+          .split("")
+          .map((c) => nameMap[c] || c)
+          .join(" + ");
+        return `
+          <div class="stat-bar-row">
+            <div class="stat-bar-head">
+              <span>${renderTeamDotsHtml(code)} <span style="color:var(--text-secondary);font-size:0.8rem;margin-left:6px">${escapeHtml(
+          readable
+        )}</span></span>
+              <strong style="font-family:var(--font-mono)">${cnt} salas</strong>
+            </div>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill" style="width:${Math.round((cnt / maxSquad) * 100)}%"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    // Efectividad e hitos por integrante
+    const insightsEl = document.getElementById("team-insights-list");
+    insightsEl.innerHTML = MEMBERS.map((m) => {
+      const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
+      const exOk = rooms.filter((r) => r.exito === "S").length;
+      const exFail = rooms.filter((r) => r.exito === "N").length;
+      const totalEval = exOk + exFail;
+      const winPct = totalEval > 0 ? Math.round((exOk / totalEval) * 100) : 0;
+      const winLabel = totalEval > 0 ? `${winPct}% éxito (${exOk}/${totalEval})` : "Sin registro";
+
+      const years = {};
+      rooms.forEach((r) => {
+        if (r.year && !r.undated) years[r.year] = (years[r.year] || 0) + 1;
+      });
+      const bestYearEntry = Object.entries(years).sort((a, b) => b[1] - a[1])[0];
+      const bestYearTxt = bestYearEntry ? `Récord en ${bestYearEntry[0]} (${bestYearEntry[1]})` : "—";
+
+      return `
+        <div class="stat-bar-row">
+          <div class="stat-bar-head">
+            <span>
+              <span class="team-dot ${m.key === "+" ? "dot-plus" : `dot-${m.key}`}" style="margin-right:6px">${m.key}</span>
+              <strong>${escapeHtml(m.name)}</strong>
+              <span style="color:var(--text-secondary);font-size:0.77rem;margin-left:6px">· ${escapeHtml(bestYearTxt)}</span>
+            </span>
+            <span style="font-family:var(--font-mono);font-size:0.8rem;color:#6ee7b7">${escapeHtml(winLabel)}</span>
+          </div>
+          <div class="stat-bar-track">
+            <div class="stat-bar-fill" style="width:${winPct}%;background:${m.color}"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  /* ---------------------------------------------------------
+     SECCIÓN RANKING TOP 10
+     --------------------------------------------------------- */
+
   function getScoreForRankMode(room, mode) {
     if (mode === "general") return room.media.general;
     if (mode === "miguel") return room.miguel.media;
@@ -822,7 +1334,9 @@
           : `background:${fallbackGradient(r.tematica)}`;
 
         return `
-          <article class="rank-card ${podiumCls}" data-room-id="${r.id}" tabindex="0" role="button" aria-label="Ver detalles de ${escapeHtml(r.sala)}">
+          <article class="rank-card ${podiumCls}" data-room-id="${r.id}" tabindex="0" role="button" aria-label="Ver detalles de ${escapeHtml(
+          r.sala
+        )}">
             <div class="rank-poster" style="${bgStyle}">
               <span class="rank-pos-badge">${medal}</span>
               <span class="rank-score-Float">★ ${fmtScore(entry.primary)}</span>
@@ -830,7 +1344,9 @@
             </div>
             <div class="rank-body">
               <div class="rank-title">${escapeHtml(r.sala)}</div>
-              <div class="rank-company">${escapeHtml(r.empresa)} · 📍 ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})</div>
+              <div class="rank-company">${escapeHtml(r.empresa)} · 📍 ${escapeHtml(r.ciudad)} (${escapeHtml(
+          r.provincia
+        )})</div>
 
               <div class="rank-mini-bars">
                 <div class="mini-stat"><span>Ambientación</span><strong>${fmtScore(r.media.dims[3])}</strong></div>
@@ -860,183 +1376,10 @@
     });
   }
 
-  function renderTeamDotsHtml(deNosotros) {
-    if (!deNosotros) return '<span class="date-unknown">—</span>';
-    const order = ["S", "M", "R", "A", "J", "+"];
-    return `<span class="team-dots">${order
-      .filter((ch) => deNosotros.includes(ch))
-      .map((ch) => {
-        const cls = ch === "+" ? "dot-plus" : `dot-${ch}`;
-        const memberName = MEMBERS.find((m) => m.key === ch)?.name || ch;
-        return `<span class="team-dot ${cls}" title="${escapeHtml(memberName)}">${ch}</span>`;
-      })
-      .join("")}</span>`;
-  }
+  /* ---------------------------------------------------------
+     SECCIÓN MAPA INTERACTIVO Y DESGLOSE GEOGRÁFICO
+     --------------------------------------------------------- */
 
-  // 3A. Gráfica de salas visitadas por año
-  function renderYearChart() {
-    const byYear = {};
-    let undatedCount = 0;
-
-    state.visitedRooms.forEach((r) => {
-      if (r.undated || !r.year) {
-        undatedCount += 1;
-        return;
-      }
-      if (!byYear[r.year]) byYear[r.year] = { count: 0, scores: [] };
-      byYear[r.year].count += 1;
-      if (r.media.media !== null) byYear[r.year].scores.push(r.media.media);
-    });
-
-    const years = Object.keys(byYear)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    // Asegurar serie continua entre el primer y último año
-    if (years.length >= 2) {
-      for (let y = years[0]; y <= years[years.length - 1]; y++) {
-        if (!byYear[y]) byYear[y] = { count: 0, scores: [] };
-      }
-    }
-
-    const sortedYears = Object.keys(byYear)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    const counts = sortedYears.map((y) => byYear[y].count);
-    const avgs = sortedYears.map((y) => {
-      const arr = byYear[y].scores;
-      return arr.length ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)) : null;
-    });
-
-    const undatedEl = document.getElementById("undated-badge");
-    if (undatedCount > 0) {
-      undatedEl.textContent = `+ ${undatedCount} sin fecha exacta`;
-      undatedEl.hidden = false;
-    } else {
-      undatedEl.hidden = true;
-    }
-
-    // Resumen rápido inferior
-    let peakYear = "—";
-    let peakCount = 0;
-    sortedYears.forEach((y) => {
-      if (byYear[y].count > peakCount) {
-        peakCount = byYear[y].count;
-        peakYear = y;
-      }
-    });
-
-    const currentYear = new Date().getFullYear();
-    const currentYearCount = byYear[currentYear]?.count || 0;
-
-    document.getElementById("year-summary-strip").innerHTML = `
-      <span>🏆 Año récord: <strong>${peakYear}</strong> (${peakCount} salas)</span>
-      <span>📆 En ${currentYear}: <strong>${currentYearCount} salas</strong></span>
-      <span>💡 Clic en una barra para filtrar ese año</span>
-    `;
-
-    const ctx = document.getElementById("yearChart").getContext("2d");
-    if (state.charts.year) state.charts.year.destroy();
-
-    const valueLabelsPlugin = {
-      id: "barValueLabels",
-      afterDatasetsDraw(chart) {
-        const { ctx: c } = chart;
-        const meta = chart.getDatasetMeta(0);
-        c.save();
-        c.font = "700 12px 'JetBrains Mono', monospace";
-        c.fillStyle = "#f8fafc";
-        c.textAlign = "center";
-        meta.data.forEach((bar, i) => {
-          const val = counts[i];
-          if (val > 0) c.fillText(String(val), bar.x, bar.y - 7);
-        });
-        c.restore();
-      }
-    };
-
-    state.charts.year = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: sortedYears.map(String),
-        datasets: [
-          {
-            type: "bar",
-            label: "Salas visitadas",
-            data: counts,
-            backgroundColor: sortedYears.map((y) =>
-              y === peakYear ? "rgba(245, 176, 56, 0.85)" : "rgba(56, 189, 248, 0.68)"
-            ),
-            hoverBackgroundColor: "#ffd166",
-            borderRadius: 8,
-            maxBarThickness: 42,
-            yAxisID: "y"
-          },
-          {
-            type: "line",
-            label: "Nota media del año",
-            data: avgs,
-            borderColor: "#f5b038",
-            backgroundColor: "#f5b038",
-            borderWidth: 2.4,
-            pointRadius: 4,
-            tension: 0.32,
-            spanGaps: true,
-            yAxisID: "y1"
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        onClick: (_, elements) => {
-          if (elements && elements.length > 0) {
-            const idx = elements[0].index;
-            const clickedYear = String(sortedYears[idx]);
-            state.visitedFilter.year =
-              state.visitedFilter.year === clickedYear ? "ALL" : clickedYear;
-            state.visitedFilter.page = 1;
-            document.getElementById("visited-year-filter").value = state.visitedFilter.year;
-            renderVisitedTable();
-            document.getElementById("visitadas").scrollIntoView({ behavior: "smooth" });
-          }
-        },
-        plugins: {
-          legend: {
-            labels: { color: "#cbd5e1", font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 } }
-          },
-          tooltip: {
-            backgroundColor: "#0f172a",
-            borderColor: "rgba(245,176,56,0.4)",
-            borderWidth: 1
-          }
-        },
-        scales: {
-          x: {
-            ticks: { color: "#94a3b8", font: { family: "'JetBrains Mono', monospace" } },
-            grid: { display: false }
-          },
-          y: {
-            beginAtZero: true,
-            suggestedMax: Math.max(...counts, 5) + 3,
-            ticks: { color: "#94a3b8", precision: 0 },
-            grid: { color: "rgba(148,163,184,0.1)" }
-          },
-          y1: {
-            position: "right",
-            min: 1,
-            max: 5,
-            ticks: { color: "#f5b038" },
-            grid: { drawOnChartArea: false }
-          }
-        }
-      },
-      plugins: [valueLabelsPlugin]
-    });
-  }
-
-  // 3B. Mapa interactivo de todas las salas visitadas
   function renderMap() {
     if (!state.map) {
       state.map = L.map("visited-map", {
@@ -1089,10 +1432,88 @@
     document.getElementById("map-subtitle").textContent =
       `${mappedCount} salas visitadas geolocalizadas · Haz clic en los círculos para desplegar`;
 
-    setTimeout(() => state.map.invalidateSize(), 150);
+    setTimeout(() => state.map && state.map.invalidateSize(), 120);
   }
 
-  // 4. Tabla de salas visitadas con paginación
+  function renderGeoBreakdown() {
+    const provMap = {};
+    const cityMap = {};
+
+    state.visitedRooms.forEach((r) => {
+      const pKey = normalizeKey(r.provincia);
+      if (!provMap[pKey]) provMap[pKey] = { name: r.provincia, count: 0, scores: [] };
+      provMap[pKey].count += 1;
+      if (r.media.media !== null) provMap[pKey].scores.push(r.media.media);
+
+      if (r.ciudad && r.ciudad !== "—") {
+        const cKey = normalizeKey(r.ciudad);
+        if (!cityMap[cKey]) cityMap[cKey] = { name: r.ciudad, prov: r.provincia, count: 0 };
+        cityMap[cKey].count += 1;
+      }
+    });
+
+    const topProvs = Object.values(provMap)
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es"))
+      .slice(0, 8);
+    const maxProv = topProvs[0]?.count || 1;
+
+    document.getElementById("geo-provinces-list").innerHTML = topProvs
+      .map((p) => {
+        const avg = p.scores.length ? p.scores.reduce((s, v) => s + v, 0) / p.scores.length : null;
+        return `
+          <div class="stat-bar-row">
+            <div class="stat-bar-head">
+              <span><strong>${escapeHtml(p.name)}</strong> <span style="color:var(--text-secondary);font-size:0.78rem">(${p.count} salas)</span></span>
+              <span class="score-pill">★ ${fmtScore(avg)}</span>
+            </div>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill" style="width:${Math.round((p.count / maxProv) * 100)}%"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const topCities = Object.values(cityMap)
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es"))
+      .slice(0, 8);
+    const maxCity = topCities[0]?.count || 1;
+
+    const citiesEl = document.getElementById("geo-cities-list");
+    citiesEl.innerHTML = topCities
+      .map(
+        (c) => `
+          <button type="button" class="stat-bar-row stat-bar-row-btn" data-geo-city="${escapeHtml(c.name)}">
+            <div class="stat-bar-head">
+              <span>📍 <strong>${escapeHtml(c.name)}</strong> <span style="color:var(--text-secondary);font-size:0.78rem">(${escapeHtml(
+          c.prov
+        )})</span></span>
+              <strong style="font-family:var(--font-mono);color:var(--cyan)">${c.count} salas →</strong>
+            </div>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill" style="width:${Math.round((c.count / maxCity) * 100)}%"></div>
+            </div>
+          </button>
+        `
+      )
+      .join("");
+
+    citiesEl.querySelectorAll("[data-geo-city]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const city = btn.getAttribute("data-geo-city");
+        state.visitedFilter.search = city;
+        state.visitedFilter.page = 1;
+        document.getElementById("visited-search").value = city;
+        renderVisitedTable();
+        navigateToSection("visitadas");
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------
+     SECCIÓN SALAS VISITADAS CON PAGINACIÓN
+     --------------------------------------------------------- */
+
   function populateVisitedFilters() {
     const yearSelect = document.getElementById("visited-year-filter");
     const currentVal = state.visitedFilter.year;
@@ -1178,7 +1599,6 @@
       });
     }
 
-    // Controles de paginación
     const pagBar = document.getElementById("visited-pagination");
     const fromNum = filtered.length === 0 ? 0 : start + 1;
     const toNum = Math.min(start + pageSize, filtered.length);
@@ -1214,7 +1634,42 @@
     });
   }
 
-  // 5. Salas pendientes filtrables por provincias
+  /* ---------------------------------------------------------
+     SECCIÓN SALAS PENDIENTES Y PRÓXIMAS RESERVAS
+     --------------------------------------------------------- */
+
+  function renderUpcomingSection() {
+    const wrap = document.getElementById("upcoming-section-wrap");
+    if (!wrap) return;
+
+    if (state.upcomingRooms.length === 0) {
+      wrap.hidden = true;
+      wrap.innerHTML = "";
+      return;
+    }
+
+    wrap.hidden = false;
+    wrap.innerHTML = `
+      <span class="section-kicker" style="color:#6ee7b7">AGENDA CONFIRMADA</span>
+      <h4 style="font-size:1.1rem">📅 Próximas reservas con fecha (${state.upcomingRooms.length})</h4>
+      <div class="upcoming-cards-row">
+        ${state.upcomingRooms
+          .map(
+            (r) => `
+              <div class="upcoming-mini-card">
+                <div style="font-family:var(--font-mono);font-size:0.75rem;color:#6ee7b7">${escapeHtml(r.fechaDisplay)} · ${escapeHtml(
+              r.ciudad
+            )}</div>
+                <div style="font-weight:700;color:#fff;margin-top:0.15rem">${escapeHtml(r.sala)}</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(r.empresa)}</div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
   function populatePendingFilters() {
     const provCounts = {};
     const themeCounts = {};
@@ -1249,11 +1704,15 @@
 
     const chipsContainer = document.getElementById("pending-province-chips");
     chipsContainer.innerHTML =
-      `<button type="button" class="prov-chip ${state.pendingFilter.province === "ALL" ? "active" : ""}" data-prov="ALL">Todas <b>${state.pendingRooms.length}</b></button>` +
+      `<button type="button" class="prov-chip ${state.pendingFilter.province === "ALL" ? "active" : ""}" data-prov="ALL">Todas <b>${
+        state.pendingRooms.length
+      }</b></button>` +
       provList
         .map(
           ([p, c]) =>
-            `<button type="button" class="prov-chip ${state.pendingFilter.province === p ? "active" : ""}" data-prov="${escapeHtml(p)}">${escapeHtml(p)} <b>${c}</b></button>`
+            `<button type="button" class="prov-chip ${state.pendingFilter.province === p ? "active" : ""}" data-prov="${escapeHtml(
+              p
+            )}">${escapeHtml(p)} <b>${c}</b></button>`
         )
         .join("");
 
@@ -1271,6 +1730,10 @@
   function renderPendingList() {
     const { search, province, theme } = state.pendingFilter;
     const q = normalizeKey(search);
+
+    const hasActivePendingFilter = Boolean(q) || province !== "ALL" || theme !== "ALL";
+    const resetBtn = document.getElementById("pending-reset-btn");
+    if (resetBtn) resetBtn.hidden = !hasActivePendingFilter;
 
     const filtered = state.pendingRooms.filter((r) => {
       if (province !== "ALL" && r.provincia !== province) return false;
@@ -1321,9 +1784,171 @@
       .join("");
   }
 
-  // 6. Estadísticas adicionales relevantes
+  /* ---------------------------------------------------------
+     SECCIÓN ESTADÍSTICAS: EVOLUCIÓN ANUAL Y RADIOGRAFÍA
+     --------------------------------------------------------- */
+
+  function renderYearChart() {
+    const byYear = {};
+    let undatedCount = 0;
+
+    state.visitedRooms.forEach((r) => {
+      if (r.undated || !r.year) {
+        undatedCount += 1;
+        return;
+      }
+      if (!byYear[r.year]) byYear[r.year] = { count: 0, scores: [] };
+      byYear[r.year].count += 1;
+      if (r.media.media !== null) byYear[r.year].scores.push(r.media.media);
+    });
+
+    const years = Object.keys(byYear)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    if (years.length >= 2) {
+      for (let y = years[0]; y <= years[years.length - 1]; y++) {
+        if (!byYear[y]) byYear[y] = { count: 0, scores: [] };
+      }
+    }
+
+    const sortedYears = Object.keys(byYear)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    const counts = sortedYears.map((y) => byYear[y].count);
+    const avgs = sortedYears.map((y) => {
+      const arr = byYear[y].scores;
+      return arr.length ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)) : null;
+    });
+
+    const undatedEl = document.getElementById("undated-badge");
+    if (undatedCount > 0) {
+      undatedEl.textContent = `+ ${undatedCount} sin fecha exacta`;
+      undatedEl.hidden = false;
+    } else {
+      undatedEl.hidden = true;
+    }
+
+    let peakYear = "—";
+    let peakCount = 0;
+    sortedYears.forEach((y) => {
+      if (byYear[y].count > peakCount) {
+        peakCount = byYear[y].count;
+        peakYear = y;
+      }
+    });
+
+    const currentYear = new Date().getFullYear();
+    const currentYearCount = byYear[currentYear]?.count || 0;
+
+    document.getElementById("year-summary-strip").innerHTML = `
+      <span>🏆 Año récord: <strong>${peakYear}</strong> (${peakCount} salas)</span>
+      <span>📆 En ${currentYear}: <strong>${currentYearCount} salas</strong></span>
+      <span>💡 Clic en una barra para filtrar ese año en Visitadas</span>
+    `;
+
+    const ctx = document.getElementById("yearChart").getContext("2d");
+    if (state.charts.year) state.charts.year.destroy();
+
+    const valueLabelsPlugin = {
+      id: "barValueLabels",
+      afterDatasetsDraw(chart) {
+        const { ctx: c } = chart;
+        const meta = chart.getDatasetMeta(0);
+        c.save();
+        c.font = "700 12px 'JetBrains Mono', monospace";
+        c.fillStyle = "#f8fafc";
+        c.textAlign = "center";
+        meta.data.forEach((bar, i) => {
+          const val = counts[i];
+          if (val > 0) c.fillText(String(val), bar.x, bar.y - 7);
+        });
+        c.restore();
+      }
+    };
+
+    state.charts.year = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: sortedYears.map(String),
+        datasets: [
+          {
+            type: "bar",
+            label: "Salas visitadas",
+            data: counts,
+            backgroundColor: sortedYears.map((y) =>
+              y === peakYear ? "rgba(245, 176, 56, 0.85)" : "rgba(56, 189, 248, 0.68)"
+            ),
+            hoverBackgroundColor: "#ffd166",
+            borderRadius: 8,
+            maxBarThickness: 44,
+            yAxisID: "y"
+          },
+          {
+            type: "line",
+            label: "Nota media del año",
+            data: avgs,
+            borderColor: "#f5b038",
+            backgroundColor: "#f5b038",
+            borderWidth: 2.4,
+            pointRadius: 4,
+            tension: 0.32,
+            spanGaps: true,
+            yAxisID: "y1"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: (_, elements) => {
+          if (elements && elements.length > 0) {
+            const idx = elements[0].index;
+            const clickedYear = String(sortedYears[idx]);
+            state.visitedFilter.year = clickedYear;
+            state.visitedFilter.page = 1;
+            document.getElementById("visited-year-filter").value = clickedYear;
+            renderVisitedTable();
+            navigateToSection("visitadas");
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: "#cbd5e1", font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 } }
+          },
+          tooltip: {
+            backgroundColor: "#0f172a",
+            borderColor: "rgba(245,176,56,0.4)",
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#94a3b8", font: { family: "'JetBrains Mono', monospace" } },
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: Math.max(...counts, 5) + 3,
+            ticks: { color: "#94a3b8", precision: 0 },
+            grid: { color: "rgba(148,163,184,0.1)" }
+          },
+          y1: {
+            position: "right",
+            min: 1,
+            max: 5,
+            ticks: { color: "#f5b038" },
+            grid: { drawOnChartArea: false }
+          }
+        }
+      },
+      plugins: [valueLabelsPlugin]
+    });
+  }
+
   function renderExtraStats() {
-    // 6A. Radar 7 criterios (Media vs Sara vs Miguel)
+    // 1. Radar 7 criterios (Media vs Sara vs Miguel)
     const avgMedia = DIMENSIONS.map((_, i) => {
       const vals = state.visitedRooms.map((r) => r.media.dims[i]).filter((v) => v !== null);
       return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
@@ -1389,7 +2014,7 @@
       }
     });
 
-    // 6B. Temáticas: Visitadas vs Pendientes
+    // 2. Temáticas: Visitadas vs Pendientes
     const themeMap = {};
     state.visitedRooms.forEach((r) => {
       if (r.tematica === "Sin especificar") return;
@@ -1449,39 +2074,7 @@
       }
     });
 
-    // 6C. Alineaciones más habituales del equipo
-    const squadCounts = {};
-    state.visitedRooms.forEach((r) => {
-      if (!r.deNosotros) return;
-      squadCounts[r.deNosotros] = (squadCounts[r.deNosotros] || 0) + 1;
-    });
-    const topSquads = Object.entries(squadCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 7);
-    const maxSquad = topSquads[0]?.[1] || 1;
-
-    const nameMap = { S: "Sara", M: "Miguel", R: "Rafa", A: "Antonio", J: "Joan", "+": "Invitados" };
-    document.getElementById("squads-list").innerHTML = topSquads
-      .map(([code, cnt]) => {
-        const readable = code
-          .split("")
-          .map((c) => nameMap[c] || c)
-          .join(" + ");
-        return `
-          <div class="stat-bar-row">
-            <div class="stat-bar-head">
-              <span>${renderTeamDotsHtml(code)} <span style="color:var(--text-secondary);font-size:0.8rem;margin-left:6px">${escapeHtml(readable)}</span></span>
-              <strong style="font-family:var(--font-mono)">${cnt} salas</strong>
-            </div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" style="width:${Math.round((cnt / maxSquad) * 100)}%"></div>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    // 6D. Empresas con >= 2 salas jugadas ordenadas por nota media
+    // 3. Empresas con >= 2 salas jugadas ordenadas por nota media
     const compStats = {};
     state.visitedRooms.forEach((r) => {
       if (!r.empresa || r.empresa === "Sin empresa") return;
@@ -1515,6 +2108,65 @@
         `
       )
       .join("");
+
+    // 4. Distribución de notas y tasa de éxito
+    const ratedRooms = state.visitedRooms.filter((r) => r.media.media !== null);
+    const totalRated = ratedRooms.length || 1;
+    const brackets = [
+      {
+        label: "Obras maestras (4,50 – 5,00★)",
+        count: ratedRooms.filter((r) => r.media.media >= 4.5).length,
+        color: "#ffd166"
+      },
+      {
+        label: "Sobresalientes (4,00 – 4,49★)",
+        count: ratedRooms.filter((r) => r.media.media >= 4.0 && r.media.media < 4.5).length,
+        color: "#38bdf8"
+      },
+      {
+        label: "Notables (3,50 – 3,99★)",
+        count: ratedRooms.filter((r) => r.media.media >= 3.5 && r.media.media < 4.0).length,
+        color: "#34d399"
+      },
+      {
+        label: "Aprobadas / Discretas (< 3,50★)",
+        count: ratedRooms.filter((r) => r.media.media < 3.5).length,
+        color: "#94a3b8"
+      }
+    ];
+
+    const exOk = state.visitedRooms.filter((r) => r.exito === "S").length;
+    const exFail = state.visitedRooms.filter((r) => r.exito === "N").length;
+    const successPct = exOk + exFail > 0 ? Math.round((exOk / (exOk + exFail)) * 100) : 0;
+
+    document.getElementById("ratings-dist-list").innerHTML =
+      brackets
+        .map((b) => {
+          const pct = Math.round((b.count / totalRated) * 100);
+          return `
+            <div class="stat-bar-row">
+              <div class="stat-bar-head">
+                <span>${escapeHtml(b.label)}</span>
+                <strong style="font-family:var(--font-mono)">${b.count} (${pct}%)</strong>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width:${pct}%;background:${b.color}"></div>
+              </div>
+            </div>
+          `;
+        })
+        .join("") +
+      `
+        <div class="stat-bar-row" style="margin-top:0.35rem;padding-top:0.65rem;border-top:1px solid var(--border-subtle)">
+          <div class="stat-bar-head">
+            <span>🏁 <strong>Tasa global de escape completado</strong></span>
+            <strong style="font-family:var(--font-mono);color:#6ee7b7">${successPct}% (${exOk}/${exOk + exFail})</strong>
+          </div>
+          <div class="stat-bar-track">
+            <div class="stat-bar-fill" style="width:${successPct}%;background:#10b981"></div>
+          </div>
+        </div>
+      `;
   }
 
   /* ---------------------------------------------------------
@@ -1558,7 +2210,13 @@
       </div>
 
       ${r.masInfo ? `<p style="margin:0.5rem 0"><span class="award-badge">🏆 ${escapeHtml(r.masInfo)}</span></p>` : ""}
-      ${r.opinion ? `<p style="background:rgba(255,255,255,0.04);padding:0.75rem;border-radius:10px;font-size:0.88rem">${escapeHtml(r.opinion)}</p>` : ""}
+      ${
+        r.opinion
+          ? `<p style="background:rgba(255,255,255,0.04);padding:0.75rem;border-radius:10px;font-size:0.88rem">${escapeHtml(
+              r.opinion
+            )}</p>`
+          : ""
+      }
 
       <table class="modal-scores-table">
         <thead>
@@ -1587,11 +2245,40 @@
   window.__openEscapeRoomModal = openRoomModal;
 
   /* ---------------------------------------------------------
-     EVENTOS DE INTERFAZ
+     EVENTOS DE INTERFAZ Y ENRUTAMIENTO DE SECCIONES
      --------------------------------------------------------- */
 
   function bindEvents() {
-    // Botón principal de inicio de sesión OAuth (requiere permiso de lectura del Google Sheet)
+    // Enlaces del menú lateral
+    document.querySelectorAll(".sidebar-link[data-section-link]").forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        navigateToSection(link.getAttribute("data-section-link"));
+      });
+    });
+
+    // Botones estáticos de salto rápido a secciones (ej. Ver Top 10, Historial, Marca...)
+    document.querySelectorAll("[data-nav-target]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        navigateToSection(el.getAttribute("data-nav-target"));
+      });
+    });
+
+    // Apertura/cierre del menú lateral en pantallas móviles/tablets
+    document.getElementById("sidebar-open-btn").addEventListener("click", openMobileSidebar);
+    document.getElementById("sidebar-close-btn").addEventListener("click", closeMobileSidebar);
+    document.getElementById("sidebar-backdrop").addEventListener("click", closeMobileSidebar);
+
+    // Sincronización con el historial del navegador (#dashboard, #visitadas, etc.)
+    window.addEventListener("hashchange", () => {
+      const target = resolveSectionFromHash();
+      if (target !== state.activeSection) {
+        navigateToSection(target, { updateHash: false });
+      }
+    });
+
+    // Botón principal de inicio de sesión OAuth
     document.getElementById("oauth-login-btn").addEventListener("click", () => {
       requestGoogleLogin("select_account");
     });
@@ -1615,6 +2302,11 @@
       state.user = null;
       clearSessionAndData();
       clearAuthMessage();
+      closeMobileSidebar();
+      navigateToSection("dashboard", { updateHash: false, scrollTop: true });
+      if (window.location.hash) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
       document.getElementById("room-modal").hidden = true;
       document.getElementById("app-shell").hidden = true;
       document.getElementById("auth-gate").hidden = false;
@@ -1676,7 +2368,13 @@
     });
 
     document.getElementById("visited-reset-btn").addEventListener("click", () => {
-      state.visitedFilter = { search: "", member: "ALL", year: "ALL", page: 1, pageSize: state.visitedFilter.pageSize };
+      state.visitedFilter = {
+        search: "",
+        member: "ALL",
+        year: "ALL",
+        page: 1,
+        pageSize: state.visitedFilter.pageSize
+      };
       document.getElementById("visited-search").value = "";
       document.getElementById("visited-member-filter").value = "ALL";
       document.getElementById("visited-year-filter").value = "ALL";
@@ -1701,7 +2399,14 @@
       renderPendingList();
     });
 
-    // Cierre de modal
+    document.getElementById("pending-reset-btn").addEventListener("click", () => {
+      state.pendingFilter = { search: "", province: "ALL", theme: "ALL" };
+      document.getElementById("pending-search").value = "";
+      populatePendingFilters();
+      renderPendingList();
+    });
+
+    // Cierre de modal y menú móvil con Escape
     const modal = document.getElementById("room-modal");
     document.getElementById("modal-close-btn").addEventListener("click", () => {
       modal.hidden = true;
@@ -1710,7 +2415,13 @@
       if (e.target === modal) modal.hidden = true;
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !modal.hidden) modal.hidden = true;
+      if (e.key === "Escape") {
+        if (!modal.hidden) {
+          modal.hidden = true;
+        } else {
+          closeMobileSidebar();
+        }
+      }
     });
   }
 

@@ -14,12 +14,14 @@ Aplicación web interactiva conectada **exclusivamente en tiempo real a Google S
   - Solicita inicio de sesión con Google y permiso `spreadsheets.readonly`.
   - Consulta directamente `https://sheets.googleapis.com/v4/spreadsheets/.../values/Datos!A1:AO1000` con el token OAuth del usuario: si la cuenta no tiene acceso compartido a la hoja, Google deniega la lectura (`403`) y el panel permanece bloqueado.
   - Al cerrar sesión se revoca el token OAuth y se limpian todos los datos en memoria.
-- **Recuento global e individual** de salas registradas y visitadas por cada miembro del grupo (e invitados `+`), con filtro rápido al hacer clic.
-- **Ranking Top 10** de mejores salas con carteles oficiales, medallas de podio y vistas opcionales (*Media Global*, *Nota General*, *Miguel*, *Sara*).
-- **Salas pendientes filtrables por provincia**, temática y buscador, destacando premios **TERPECA / ERA**.
-- **Historial completo de salas visitadas** ordenado por **fecha descendiente** con **paginación** configurable y ficha modal detallada.
-- **Gráfica de salas visitadas por año** y **mapa interactivo** con agrupación inteligente (`MarkerCluster`).
-- **Estadísticas adicionales**: radar de 7 criterios de valoración, temáticas jugadas vs. pendientes, alineaciones habituales del equipo y empresas mejor valoradas.
+- **Menú lateral agrupado por secciones** (con versión deslizable para móvil y enrutamiento por hash):
+  - **Dashboard (pantalla principal)**: Resumen ejecutivo con KPIs interactivos, podio Top 3, últimas 5 salas visitadas, participación por integrante, próximas reservas y hoja de ruta por provincias.
+  - **Salas Visitadas**: Historial completo ordenado por **fecha descendiente** con buscador, filtros por miembro/año, **paginación** configurable y ficha modal detallada.
+  - **Salas Pendientes**: Próximos objetivos filtrables por provincia, temática y buscador, destacando reservas agendadas y premios **TERPECA / ERA**.
+  - **Ranking Top 10**: Hall of Fame de mejores salas con carteles oficiales, medallas de podio y vistas opcionales (*Media Global*, *Nota General*, *Miguel*, *Sara*).
+  - **Mapa de Conquistas**: Mapa interactivo a gran tamaño con agrupación inteligente (`MarkerCluster`) y desglose por provincias y municipios.
+  - **Equipo**: Recuento global e individual por miembro (e invitados `+`), alineaciones míticas y efectividad por integrante.
+  - **Estadísticas**: Evolución anual de salas y notas, radar de 7 criterios de valoración, ADN de temáticas, empresas de referencia y distribución de calificaciones.
 
 ---
 
