@@ -118,6 +118,7 @@
     memberSheetMeta: {},
     openRoomModalId: null,
     ratingRoomId: null,
+    ratingReturnRoomId: null,
     isSavingRating: false,
     bannerTimer: null,
     rankMode: "media",
@@ -777,6 +778,7 @@
     state.memberSheetMeta = {};
     state.openRoomModalId = null;
     state.ratingRoomId = null;
+    state.ratingReturnRoomId = null;
 
     Object.keys(state.charts).forEach((k) => {
       if (state.charts[k]) {
@@ -1075,9 +1077,9 @@
     updateUserHeader(freshDataset);
     renderAll();
 
-    // Si estaba abierta la ficha de detalle de esa sala, refrescarla también
+    // Si estaba abierta la ficha de detalle de esa sala y no estamos en el modal de valoración, refrescarla también
     const roomModal = document.getElementById("room-modal");
-    if (roomModal && !roomModal.hidden && state.openRoomModalId === roomId) {
+    if (roomModal && !roomModal.hidden && state.openRoomModalId === roomId && !state.ratingRoomId) {
       openRoomModal(roomId);
     }
   }
@@ -2231,6 +2233,10 @@
     if (!member || !room || !canMemberRateRoom(member, room)) return;
 
     state.ratingRoomId = roomId;
+    state.ratingReturnRoomId = state.openRoomModalId === roomId ? roomId : null;
+
+    const roomModal = document.getElementById("room-modal");
+    if (roomModal) roomModal.hidden = true;
     const existing = room.ratings[member.key] || { dims: DIMENSIONS.map(() => null), hasAnyScore: false };
     const draftDims = existing.dims.map((v) => (v !== null && Number.isFinite(v) ? v : null));
 
@@ -2391,7 +2397,9 @@
 
       try {
         await savePersonalRoomRating(room.id, dimsToWrite);
-        closeRatingModal();
+        state.isSavingRating = false;
+        closeRatingModal(true);
+        openRoomModal(room.id);
         showSyncBanner(
           isDelete
             ? `🗑️ Valoración eliminada de la hoja <strong>${escapeHtml(member.sheet)}</strong> para «${escapeHtml(
@@ -2470,11 +2478,19 @@
     modal.hidden = false;
   }
 
-  function closeRatingModal() {
-    if (state.isSavingRating) return;
+  function closeRatingModal(force = false) {
+    if (state.isSavingRating && !force) return;
     const modal = document.getElementById("rating-modal");
     if (modal) modal.hidden = true;
     state.ratingRoomId = null;
+
+    if (!force && state.ratingReturnRoomId) {
+      const returnId = state.ratingReturnRoomId;
+      state.ratingReturnRoomId = null;
+      openRoomModal(returnId);
+    } else {
+      state.ratingReturnRoomId = null;
+    }
   }
 
   /* ---------------------------------------------------------
