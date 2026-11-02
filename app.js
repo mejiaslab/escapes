@@ -139,7 +139,7 @@
     pendingFilter: {
       search: "",
       province: "ALL",
-      theme: "ALL"
+      themes: []
     },
     charts: {
       year: null,
@@ -3080,57 +3080,146 @@
     );
 
     const provSelect = document.getElementById("pending-province-select");
-    provSelect.innerHTML =
-      `<option value="ALL">Todas las provincias (${state.pendingRooms.length})</option>` +
-      provList
-        .map(([p, c]) => `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${c})</option>`)
-        .join("");
-    provSelect.value = state.pendingFilter.province;
+    if (provSelect) {
+      provSelect.innerHTML =
+        `<option value="ALL">Todas las provincias (${state.pendingRooms.length})</option>` +
+        provList
+          .map(([p, c]) => `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${c})</option>`)
+          .join("");
+      provSelect.value = state.pendingFilter.province;
+    }
 
-    const themeSelect = document.getElementById("pending-theme-select");
-    themeSelect.innerHTML =
-      `<option value="ALL">Todas las temáticas</option>` +
-      themeList
-        .map(([t, c]) => `<option value="${escapeHtml(t)}">${escapeHtml(t)} (${c})</option>`)
+    // Normalizar state.pendingFilter.themes como array
+    if (!Array.isArray(state.pendingFilter.themes)) {
+      if (state.pendingFilter.theme && state.pendingFilter.theme !== "ALL") {
+        state.pendingFilter.themes = [state.pendingFilter.theme];
+      } else {
+        state.pendingFilter.themes = [];
+      }
+    }
+    const selectedThemes = state.pendingFilter.themes;
+
+    // Renderizar opciones de multiselección en el dropdown
+    const themeOptionsContainer = document.getElementById("pending-theme-options");
+    if (themeOptionsContainer) {
+      const allSelected = selectedThemes.length === 0;
+      let optionsHtml = `
+        <label class="multiselect-option ${allSelected ? "is-selected" : ""}" data-theme-val="ALL">
+          <input type="checkbox" class="multiselect-checkbox" value="ALL" ${allSelected ? "checked" : ""}>
+          <span class="multiselect-option-label">
+            <span><strong>Todas las temáticas</strong></span>
+            <span class="multiselect-count">${state.pendingRooms.length}</span>
+          </span>
+        </label>
+      `;
+
+      optionsHtml += themeList
+        .map(([t, c]) => {
+          const isChecked = selectedThemes.includes(t);
+          return `
+            <label class="multiselect-option ${isChecked ? "is-selected" : ""}" data-theme-val="${escapeHtml(t)}">
+              <input type="checkbox" class="multiselect-checkbox" value="${escapeHtml(t)}" ${isChecked ? "checked" : ""}>
+              <span class="multiselect-option-label">
+                <span class="theme-tag ${themeClass(t)}">${escapeHtml(t)}</span>
+                <span class="multiselect-count">${c}</span>
+              </span>
+            </label>
+          `;
+        })
         .join("");
-    themeSelect.value = state.pendingFilter.theme;
+
+      themeOptionsContainer.innerHTML = optionsHtml;
+    }
+
+    // Actualizar botón disparador del dropdown de temáticas
+    const trigger = document.getElementById("pending-theme-trigger");
+    const labelEl = document.getElementById("pending-theme-label");
+    const badgeEl = document.getElementById("pending-theme-badge");
+
+    if (trigger && labelEl && badgeEl) {
+      if (selectedThemes.length === 0) {
+        labelEl.textContent = "Todas las temáticas";
+        badgeEl.hidden = true;
+        trigger.classList.remove("has-active-selection");
+      } else if (selectedThemes.length === 1) {
+        labelEl.textContent = selectedThemes[0];
+        badgeEl.textContent = "1";
+        badgeEl.hidden = false;
+        trigger.classList.add("has-active-selection");
+      } else {
+        labelEl.textContent = `${selectedThemes.length} temáticas`;
+        badgeEl.textContent = String(selectedThemes.length);
+        badgeEl.hidden = false;
+        trigger.classList.add("has-active-selection");
+      }
+    }
+
+    // Actualizar barra de chips de temáticas activas
+    const activeThemesBar = document.getElementById("pending-active-themes");
+    if (activeThemesBar) {
+      if (selectedThemes.length === 0) {
+        activeThemesBar.hidden = true;
+        activeThemesBar.innerHTML = "";
+      } else {
+        activeThemesBar.hidden = false;
+        activeThemesBar.innerHTML = `
+          <span class="active-themes-title">Temáticas:</span>
+          ${selectedThemes
+            .map(
+              (t) => `
+                <span class="active-theme-chip ${themeClass(t)}">
+                  ${escapeHtml(t)}
+                  <button type="button" class="btn-chip-remove" data-remove-theme="${escapeHtml(t)}" aria-label="Quitar ${escapeHtml(t)}">×</button>
+                </span>
+              `
+            )
+            .join("")}
+          <button type="button" class="btn-clear-all-themes" id="pending-clear-all-themes">Quitar todas (${selectedThemes.length})</button>
+        `;
+      }
+    }
 
     const chipsContainer = document.getElementById("pending-province-chips");
-    chipsContainer.innerHTML =
-      `<button type="button" class="prov-chip ${state.pendingFilter.province === "ALL" ? "active" : ""}" data-prov="ALL">Todas <b>${
-        state.pendingRooms.length
-      }</b></button>` +
-      provList
-        .map(
-          ([p, c]) =>
-            `<button type="button" class="prov-chip ${state.pendingFilter.province === p ? "active" : ""}" data-prov="${escapeHtml(
-              p
-            )}">${escapeHtml(p)} <b>${c}</b></button>`
-        )
-        .join("");
+    if (chipsContainer) {
+      chipsContainer.innerHTML =
+        `<button type="button" class="prov-chip ${state.pendingFilter.province === "ALL" ? "active" : ""}" data-prov="ALL">Todas <b>${
+          state.pendingRooms.length
+        }</b></button>` +
+        provList
+          .map(
+            ([p, c]) =>
+              `<button type="button" class="prov-chip ${state.pendingFilter.province === p ? "active" : ""}" data-prov="${escapeHtml(
+                p
+              )}">${escapeHtml(p)} <b>${c}</b></button>`
+          )
+          .join("");
 
-    chipsContainer.querySelectorAll(".prov-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        const prov = chip.getAttribute("data-prov");
-        state.pendingFilter.province = prov;
-        provSelect.value = prov;
-        populatePendingFilters();
-        renderPendingList();
+      chipsContainer.querySelectorAll(".prov-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const prov = chip.getAttribute("data-prov");
+          state.pendingFilter.province = prov;
+          if (provSelect) provSelect.value = prov;
+          populatePendingFilters();
+          renderPendingList();
+        });
       });
-    });
+    }
   }
 
   function renderPendingList() {
-    const { search, province, theme } = state.pendingFilter;
+    const { search, province, themes } = state.pendingFilter;
+    const activeThemes = Array.isArray(themes)
+      ? themes
+      : (state.pendingFilter.theme && state.pendingFilter.theme !== "ALL" ? [state.pendingFilter.theme] : []);
     const q = normalizeKey(search);
 
-    const hasActivePendingFilter = Boolean(q) || province !== "ALL" || theme !== "ALL";
+    const hasActivePendingFilter = Boolean(q) || province !== "ALL" || activeThemes.length > 0;
     const resetBtn = document.getElementById("pending-reset-btn");
     if (resetBtn) resetBtn.hidden = !hasActivePendingFilter;
 
     const filtered = state.pendingRooms.filter((r) => {
       if (province !== "ALL" && r.provincia !== province) return false;
-      if (theme !== "ALL" && r.tematica !== theme) return false;
+      if (activeThemes.length > 0 && !activeThemes.includes(r.tematica)) return false;
       if (q) {
         const cat = resolveRoomCatalog(r);
         const desc = cat?.description ? normalizeKey(cat.description) : "";
@@ -3921,13 +4010,138 @@
       renderPendingList();
     });
 
-    document.getElementById("pending-theme-select").addEventListener("change", (e) => {
-      state.pendingFilter.theme = e.target.value;
-      renderPendingList();
-    });
+    // Dropdown multi-selección de temáticas
+    const themeDropdown = document.getElementById("pending-theme-dropdown");
+    const themeTrigger = document.getElementById("pending-theme-trigger");
+    const themePanel = document.getElementById("pending-theme-panel");
+    const themeSearchInput = document.getElementById("pending-theme-search");
+    const themeSelectAllBtn = document.getElementById("pending-theme-select-all");
+    const themeClearBtn = document.getElementById("pending-theme-clear");
+    const activeThemesBar = document.getElementById("pending-active-themes");
+
+    function closeThemeDropdown() {
+      if (themePanel && !themePanel.hidden) {
+        themePanel.hidden = true;
+        themeTrigger?.setAttribute("aria-expanded", "false");
+        themeTrigger?.classList.remove("is-open");
+      }
+    }
+
+    function filterThemeOptions(term) {
+      const q = normalizeKey(term);
+      const options = document.querySelectorAll("#pending-theme-options .multiselect-option");
+      options.forEach((opt) => {
+        const val = opt.getAttribute("data-theme-val");
+        if (val === "ALL") {
+          opt.hidden = Boolean(q);
+          return;
+        }
+        opt.hidden = Boolean(q && !normalizeKey(val).includes(q));
+      });
+    }
+
+    if (themeTrigger && themePanel) {
+      themeTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = !themePanel.hidden;
+        themePanel.hidden = isOpen;
+        themeTrigger.setAttribute("aria-expanded", String(!isOpen));
+        themeTrigger.classList.toggle("is-open", !isOpen);
+        if (!isOpen && themeSearchInput) {
+          themeSearchInput.value = "";
+          filterThemeOptions("");
+          setTimeout(() => themeSearchInput.focus(), 60);
+        }
+      });
+
+      themePanel.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
+      document.addEventListener("click", (e) => {
+        if (themeDropdown && !themeDropdown.contains(e.target)) {
+          closeThemeDropdown();
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && themePanel && !themePanel.hidden) {
+          closeThemeDropdown();
+          themeTrigger?.focus();
+        }
+      });
+    }
+
+    if (themeSearchInput) {
+      themeSearchInput.addEventListener("input", (e) => {
+        filterThemeOptions(e.target.value);
+      });
+    }
+
+    if (themeSelectAllBtn) {
+      themeSelectAllBtn.addEventListener("click", () => {
+        state.pendingFilter.themes = [];
+        populatePendingFilters();
+        renderPendingList();
+      });
+    }
+
+    if (themeClearBtn) {
+      themeClearBtn.addEventListener("click", () => {
+        state.pendingFilter.themes = [];
+        populatePendingFilters();
+        renderPendingList();
+      });
+    }
+
+    const themeOptionsEl = document.getElementById("pending-theme-options");
+    if (themeOptionsEl) {
+      themeOptionsEl.addEventListener("change", (e) => {
+        const cb = e.target.closest("input.multiselect-checkbox");
+        if (!cb) return;
+
+        const val = cb.value;
+        if (val === "ALL") {
+          state.pendingFilter.themes = [];
+        } else {
+          if (!Array.isArray(state.pendingFilter.themes)) {
+            state.pendingFilter.themes = [];
+          }
+          if (cb.checked) {
+            if (!state.pendingFilter.themes.includes(val)) {
+              state.pendingFilter.themes.push(val);
+            }
+          } else {
+            state.pendingFilter.themes = state.pendingFilter.themes.filter((t) => t !== val);
+          }
+        }
+        populatePendingFilters();
+        renderPendingList();
+      });
+    }
+
+    if (activeThemesBar) {
+      activeThemesBar.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest("[data-remove-theme]");
+        if (removeBtn) {
+          const tToRemove = removeBtn.getAttribute("data-remove-theme");
+          state.pendingFilter.themes = (state.pendingFilter.themes || []).filter((t) => t !== tToRemove);
+          populatePendingFilters();
+          renderPendingList();
+          return;
+        }
+
+        const clearAllBtn = e.target.closest("#pending-clear-all-themes");
+        if (clearAllBtn) {
+          state.pendingFilter.themes = [];
+          populatePendingFilters();
+          renderPendingList();
+        }
+      });
+    }
 
     document.getElementById("pending-reset-btn").addEventListener("click", () => {
-      state.pendingFilter = { search: "", province: "ALL", theme: "ALL" };
+      state.pendingFilter = { search: "", province: "ALL", themes: [] };
       document.getElementById("pending-search").value = "";
       populatePendingFilters();
       renderPendingList();

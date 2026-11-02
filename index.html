@@ -564,9 +564,27 @@
                 <option value="ALL">Todas las provincias</option>
               </select>
 
-              <select id="pending-theme-select" class="select-input" aria-label="Filtrar pendientes por temática">
-                <option value="ALL">Todas las temáticas</option>
-              </select>
+              <div class="multiselect-dropdown" id="pending-theme-dropdown">
+                <button type="button" class="multiselect-trigger select-input" id="pending-theme-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar pendientes por temática">
+                  <span class="multiselect-label" id="pending-theme-label">Todas las temáticas</span>
+                  <span class="multiselect-badge" id="pending-theme-badge" hidden>0</span>
+                  <svg class="multiselect-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <div class="multiselect-panel" id="pending-theme-panel" hidden role="dialog" aria-label="Opciones de temática">
+                  <div class="multiselect-header">
+                    <input type="search" class="multiselect-search-input" id="pending-theme-search" placeholder="Buscar temática…" aria-label="Buscar temática" />
+                    <div class="multiselect-header-actions">
+                      <button type="button" class="btn-ghost btn-xs" id="pending-theme-select-all">Todas</button>
+                      <button type="button" class="btn-ghost btn-xs" id="pending-theme-clear">Deseleccionar</button>
+                    </div>
+                  </div>
+                  <div class="multiselect-options" id="pending-theme-options" role="listbox" aria-multiselectable="true">
+                    <!-- Opciones dinámicas -->
+                  </div>
+                </div>
+              </div>
 
               <button id="pending-reset-btn" type="button" class="btn-ghost btn-sm" hidden>Limpiar filtro</button>
             </div>
@@ -574,6 +592,11 @@
 
           <!-- Chips rápidos de provincias -->
           <div id="pending-province-chips" class="province-chips" role="group" aria-label="Filtro rápido por provincia">
+            <!-- Renderizado dinámico -->
+          </div>
+
+          <!-- Chips de temáticas activas si hay selección múltiple -->
+          <div id="pending-active-themes" class="active-themes-bar" hidden role="region" aria-label="Temáticas seleccionadas">
             <!-- Renderizado dinámico -->
           </div>
 
