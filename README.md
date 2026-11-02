@@ -10,18 +10,20 @@ Aplicación web interactiva conectada **exclusivamente en tiempo real a Google S
 
 ## Características incluidas
 
-- **Control de acceso real basado en permisos de Google Sheets** (`719597836416-s3lfcptc71809rjbk3f720ilhv8rnpk6.apps.googleusercontent.com`):
-  - Solicita inicio de sesión con Google y permiso `spreadsheets.readonly`.
-  - Consulta directamente `https://sheets.googleapis.com/v4/spreadsheets/.../values/Datos!A1:AO1000` con el token OAuth del usuario: si la cuenta no tiene acceso compartido a la hoja, Google deniega la lectura (`403`) y el panel permanece bloqueado.
+- **Control de acceso y sincronización real en Google Sheets** (`719597836416-s3lfcptc71809rjbk3f720ilhv8rnpk6.apps.googleusercontent.com`):
+  - Solicita inicio de sesión con Google y permiso `spreadsheets` para lectura y guardado de valoraciones personales.
+  - Consulta en tiempo real la hoja general `Datos` junto con las 5 hojas individuales (`Sara`, `Miguel`, `Rafa`, `Antonio`, `Joan`) mediante `values:batchGet`: si la cuenta no tiene acceso compartido a la hoja, Google deniega la lectura (`403`) y el panel permanece bloqueado.
+  - Identifica automáticamente a cada integrante por su nombre de usuario de Google (`Sara`, `Miguel`, `Rafa = Rafael`, `Antonio`, `Joan`) y permite valorar **únicamente los escapes visitados por ese miembro**.
   - Al cerrar sesión se revoca el token OAuth y se limpian todos los datos en memoria.
 - **Menú lateral agrupado por secciones** (con versión deslizable para móvil y enrutamiento por hash):
   - **Dashboard (pantalla principal)**: Resumen ejecutivo con KPIs interactivos, podio Top 3, últimas 5 salas visitadas, participación por integrante, próximas reservas y hoja de ruta por provincias.
-  - **Salas Visitadas**: Historial completo ordenado por **fecha descendiente** con buscador, filtros por miembro/año, **paginación** configurable y ficha modal detallada.
+  - **Mi Espacio (sección personal)**: Estadísticas individuales, evolución anual propia, radar personal frente al grupo, podio personal y gestor interactivo para puntuar las salas visitadas (7 criterios, excluyendo *Dificultad* del cálculo de la media).
+  - **Salas Visitadas**: Historial completo ordenado por **fecha descendiente** con buscador, filtros por miembro/año, **paginación** configurable y ficha modal detallada con las notas de cada asistente.
   - **Salas Pendientes**: Próximos objetivos filtrables por provincia, temática y buscador, destacando reservas agendadas y premios **TERPECA / ERA**.
-  - **Ranking Top 10**: Hall of Fame de mejores salas con carteles oficiales, medallas de podio y vistas opcionales (*Media Global*, *Nota General*, *Miguel*, *Sara*).
+  - **Ranking Top 10**: Hall of Fame de mejores salas con carteles oficiales, medallas de podio y vistas opcionales (*Media Global*, *Nota General*, *Sara*, *Miguel*, *Rafa*, *Antonio*, *Joan*).
   - **Mapa de Conquistas**: Mapa interactivo a gran tamaño con agrupación inteligente (`MarkerCluster`) y desglose por provincias y municipios.
   - **Equipo**: Recuento global e individual por miembro (e invitados `+`), alineaciones míticas y efectividad por integrante.
-  - **Estadísticas**: Evolución anual de salas y notas, radar de 7 criterios de valoración, ADN de temáticas, empresas de referencia y distribución de calificaciones.
+  - **Estadísticas**: Evolución anual de salas y notas (calculadas como la media de todos los miembros que han valorado cada sala), radar de 7 criterios por miembro, ADN de temáticas, empresas de referencia y distribución de calificaciones.
 
 ---
 
@@ -33,5 +35,5 @@ Aplicación web interactiva conectada **exclusivamente en tiempo real a Google S
    - `https://mejiaslab.github.io`
    - *(Opcional para desarrollo local)* `http://localhost:8000`
 3. **Permisos de acceso**:
-   - Comparte la hoja de cálculo **Escapes** en Google Drive/Sheets (como *Lector* o *Editor*) únicamente con las cuentas de Google que deban poder ver los datos en la web.
+   - Comparte la hoja de cálculo **Escapes** en Google Drive/Sheets como **Editor** con los integrantes que vayan a guardar sus valoraciones desde la web (o *Lector* si solo deben consultar).
    - Si la pantalla de consentimiento OAuth en Google Cloud está en modo *Pruebas (Testing)*, añade también esos correos en **Usuarios de prueba (Test users)**.

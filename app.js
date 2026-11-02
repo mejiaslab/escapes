@@ -1,6 +1,7 @@
 /* =========================================================
    EXPEDIENTE ESCAPISTA — LÓGICA PRINCIPAL, NAVEGACIÓN LATERAL,
-   DASHBOARD RESUMEN, OAUTH 2.0 Y VISUALIZACIÓN EN VIVO
+   MI ESPACIO PERSONAL, VALORACIONES MULTI-MIEMBRO EN SHEETS,
+   OAUTH 2.0 Y VISUALIZACIÓN EN VIVO
    ========================================================= */
 
 (function () {
@@ -9,18 +10,58 @@
   const GOOGLE_CLIENT_ID =
     "719597836416-s3lfcptc71809rjbk3f720ilhv8rnpk6.apps.googleusercontent.com";
   const SPREADSHEET_ID = "1riZ1aM8txI27Zpm11VJzVv1mqGuCvDvZKilcs2n_Djg";
-  const SHEET_RANGE = "Datos!A1:AO1000";
+  const DATOS_RANGE = "Datos!A1:P1000";
 
-  const SESSION_KEY = "escapes_oauth_session_v2";
-  const SHEETS_READONLY_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
-  const OAUTH_SCOPES = `openid email profile ${SHEETS_READONLY_SCOPE}`;
+  const SESSION_KEY = "escapes_oauth_session_v3";
+  const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+  const OAUTH_SCOPES = `openid email profile ${SHEETS_SCOPE}`;
+
+  // Los 5 integrantes principales con hoja de valoraciones propia
+  const CORE_MEMBERS = [
+    {
+      key: "S",
+      name: "Sara",
+      sheet: "Sara",
+      aliases: ["sara"],
+      color: "#f472b6",
+      bg: "rgba(244, 114, 182, 0.18)"
+    },
+    {
+      key: "M",
+      name: "Miguel",
+      sheet: "Miguel",
+      aliases: ["miguel"],
+      color: "#38bdf8",
+      bg: "rgba(56, 189, 248, 0.18)"
+    },
+    {
+      key: "R",
+      name: "Rafa",
+      sheet: "Rafa",
+      aliases: ["rafa", "rafael"],
+      color: "#34d399",
+      bg: "rgba(52, 211, 153, 0.18)"
+    },
+    {
+      key: "A",
+      name: "Antonio",
+      sheet: "Antonio",
+      aliases: ["antonio"],
+      color: "#fbbf24",
+      bg: "rgba(251, 191, 36, 0.18)"
+    },
+    {
+      key: "J",
+      name: "Joan",
+      sheet: "Joan",
+      aliases: ["joan"],
+      color: "#a78bfa",
+      bg: "rgba(167, 139, 250, 0.18)"
+    }
+  ];
 
   const MEMBERS = [
-    { key: "S", name: "Sara", color: "#f472b6", bg: "rgba(244, 114, 182, 0.18)" },
-    { key: "M", name: "Miguel", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.18)" },
-    { key: "R", name: "Rafa", color: "#34d399", bg: "rgba(52, 211, 153, 0.18)" },
-    { key: "A", name: "Antonio", color: "#fbbf24", bg: "rgba(251, 191, 36, 0.18)" },
-    { key: "J", name: "Joan", color: "#a78bfa", bg: "rgba(167, 139, 250, 0.18)" },
+    ...CORE_MEMBERS,
     { key: "+", name: "Con invitados (+)", color: "#94a3b8", bg: "rgba(148, 163, 184, 0.18)" }
   ];
 
@@ -34,8 +75,12 @@
     "General"
   ];
 
+  const MEMBER_SHEET_HEADERS = ["Empresa", "Sala", ...DIMENSIONS, "Media"];
+  const QUICK_SCORES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+
   const SECTIONS = {
     dashboard: { kicker: "VISTA GENERAL", title: "Dashboard · Resumen" },
+    personal: { kicker: "ZONA PERSONAL", title: "Mi Espacio · Estadísticas y Valoraciones" },
     visitadas: { kicker: "CATÁLOGO DE SALAS", title: "Salas Visitadas" },
     pendientes: { kicker: "CATÁLOGO DE SALAS", title: "Salas Pendientes" },
     ranking: { kicker: "HALL OF FAME", title: "Ranking Top 10" },
@@ -47,26 +92,45 @@
   const HASH_ALIASES = {
     resumen: "dashboard",
     inicio: "dashboard",
-    "evolucion-mapa": "mapa"
+    "mi-espacio": "personal",
+    valoraciones: "personal",
+    valorar: "personal",
+    "evolucion-mapa": "mapa",
+    miguel: "ranking",
+    sara: "ranking"
   };
 
   // Estado global de la aplicación
   const state = {
     user: null,
+    currentMember: null,
     tokenClient: null,
     activeSection: "dashboard",
     hasData: false,
     needsMapRender: false,
     needsChartsRender: false,
+    needsPersonalChartsRender: false,
     allRooms: [],
     visitedRooms: [],
     pendingRooms: [],
     upcomingRooms: [],
     draftRooms: [],
+    memberSheetMeta: {},
+    openRoomModalId: null,
+    ratingRoomId: null,
+    isSavingRating: false,
+    bannerTimer: null,
     rankMode: "media",
     visitedFilter: {
       search: "",
       member: "ALL",
+      year: "ALL",
+      page: 1,
+      pageSize: 10
+    },
+    personalFilter: {
+      status: "ALL",
+      search: "",
       year: "ALL",
       page: 1,
       pageSize: 10
@@ -79,14 +143,16 @@
     charts: {
       year: null,
       radar: null,
-      themes: null
+      themes: null,
+      personalRadar: null,
+      personalYear: null
     },
     map: null,
     markerCluster: null
   };
 
   /* ---------------------------------------------------------
-     UTILIDADES DE NORMALIZACIÓN Y FORMATO
+     UTILIDADES DE NORMALIZACIÓN, IDENTIDAD Y FORMATO
      --------------------------------------------------------- */
 
   function normalizeKey(str) {
@@ -96,6 +162,51 @@
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, " ");
+  }
+
+  function makeRoomKey(empresa, sala) {
+    return `${normalizeKey(empresa)}||${normalizeKey(sala)}`;
+  }
+
+  function resolveCurrentMember(user) {
+    if (!user) return null;
+    const tokenize = (s) =>
+      normalizeKey(s)
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean);
+
+    const givenTokens = tokenize(user.givenName || "");
+    const fullTokens = tokenize(user.name || "");
+
+    if (givenTokens.length > 0) {
+      const firstGiven = CORE_MEMBERS.find((m) => m.aliases.includes(givenTokens[0]));
+      if (firstGiven) return firstGiven;
+      const anyGiven = CORE_MEMBERS.find((m) => givenTokens.some((t) => m.aliases.includes(t)));
+      if (anyGiven) return anyGiven;
+    }
+
+    if (fullTokens.length > 0) {
+      const firstFull = CORE_MEMBERS.find((m) => m.aliases.includes(fullTokens[0]));
+      if (firstFull) return firstFull;
+      const anyFull = CORE_MEMBERS.find((m) => fullTokens.some((t) => m.aliases.includes(t)));
+      if (anyFull) return anyFull;
+    }
+
+    return null;
+  }
+
+  function canMemberRateRoom(member, room) {
+    if (!member || !room) return false;
+    return room.status === "visited" && room.deNosotros.includes(member.key);
+  }
+
+  function computeMediaExcludingDifficulty(dims) {
+    if (!Array.isArray(dims)) return null;
+    // Índice 0 = Dificultad (excluida de la media); índices 1..6 = Variedad..General
+    const valid = dims.slice(1).filter((v) => v !== null && Number.isFinite(v));
+    if (valid.length === 0) return null;
+    const avg = valid.reduce((acc, v) => acc + v, 0) / valid.length;
+    return Number(avg.toFixed(2));
   }
 
   function cleanCityName(city) {
@@ -132,6 +243,26 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function showSyncBanner(htmlText, variant = "success", autoHideMs = 4800) {
+    const banner = document.getElementById("sync-banner");
+    if (!banner) return;
+    if (state.bannerTimer) {
+      clearTimeout(state.bannerTimer);
+      state.bannerTimer = null;
+    }
+    banner.className = "sync-banner";
+    if (variant === "success") banner.classList.add("sync-success");
+    if (variant === "error") banner.classList.add("sync-error");
+    banner.innerHTML = htmlText;
+    banner.hidden = false;
+
+    if (autoHideMs > 0) {
+      state.bannerTimer = setTimeout(() => {
+        banner.hidden = true;
+      }, autoHideMs);
+    }
   }
 
   function themeClass(theme) {
@@ -184,7 +315,6 @@
 
     if (idx === 0) return [base[0], base[1]];
 
-    // Pequeño desplazamiento en espiral áurea (~120m) cuando varias salas comparten local/ciudad
     const angle = idx * 2.399963;
     const radius = 0.0014 * Math.sqrt(idx);
     return [base[0] + radius * Math.cos(angle), base[1] + radius * Math.sin(angle)];
@@ -244,6 +374,16 @@
         if (state.charts.themes) state.charts.themes.resize();
       }
     }
+
+    if (state.activeSection === "personal" && state.currentMember) {
+      if (state.needsPersonalChartsRender) {
+        renderPersonalCharts();
+        state.needsPersonalChartsRender = false;
+      } else {
+        if (state.charts.personalRadar) state.charts.personalRadar.resize();
+        if (state.charts.personalYear) state.charts.personalYear.resize();
+      }
+    }
   }
 
   function navigateToSection(sectionId, options = {}) {
@@ -290,10 +430,82 @@
   }
 
   /* ---------------------------------------------------------
-     PARSEADOR DE LA HOJA "DATOS" DE GOOGLE SHEETS
+     PARSEADOR DE "DATOS" + LAS 5 HOJAS PERSONALES
      --------------------------------------------------------- */
 
-  function parseSheetValues(values) {
+  function parseMemberSheetValues(values) {
+    const byExactKey = new Map();
+    const bySalaCounts = new Map();
+    const bySalaEntry = new Map();
+    const rows = Array.isArray(values) ? values : [];
+    let maxRowNumber = rows.length > 0 ? 1 : 0;
+
+    for (let idx = 1; idx < rows.length; idx++) {
+      const rawRow = rows[idx] || [];
+      const rowNum = idx + 1; // 1-based en Google Sheets
+      const r = Array.from({ length: 10 }, (_, i) =>
+        rawRow[i] !== undefined && rawRow[i] !== null ? String(rawRow[i]).trim() : ""
+      );
+
+      if (r.some((cell) => cell !== "")) {
+        maxRowNumber = Math.max(maxRowNumber, rowNum);
+      }
+
+      const empresa = r[0];
+      const sala = r[1];
+      if (!sala) continue;
+
+      const dims = DIMENSIONS.map((_, i) => parseScore(r[2 + i]));
+      const media = computeMediaExcludingDifficulty(dims);
+      const hasAnyScore = dims.some((v) => v !== null);
+      const hasMedia = media !== null;
+
+      const entry = {
+        rowNumber: rowNum,
+        empresa,
+        sala,
+        dims,
+        general: dims[6],
+        media,
+        hasAnyScore,
+        hasMedia
+      };
+
+      const exactKey = makeRoomKey(empresa, sala);
+      if (!byExactKey.has(exactKey) || hasAnyScore) {
+        byExactKey.set(exactKey, entry);
+      }
+
+      const salaKey = normalizeKey(sala);
+      bySalaCounts.set(salaKey, (bySalaCounts.get(salaKey) || 0) + 1);
+      bySalaEntry.set(salaKey, entry);
+    }
+
+    return {
+      hasHeader: rows.length > 0 && rows[0] && rows[0].length > 0,
+      maxRowNumber,
+      byExactKey,
+      bySalaCounts,
+      bySalaEntry
+    };
+  }
+
+  function parseSheetDataset(dataset) {
+    const datosValues = dataset.datosValues || [];
+    const memberValuesByKey = dataset.memberValuesByKey || {};
+
+    const parsedMembers = {};
+    state.memberSheetMeta = {};
+
+    CORE_MEMBERS.forEach((m) => {
+      const parsed = parseMemberSheetValues(memberValuesByKey[m.key] || []);
+      parsedMembers[m.key] = parsed;
+      state.memberSheetMeta[m.key] = {
+        hasHeader: parsed.hasHeader,
+        maxRowNumber: parsed.maxRowNumber
+      };
+    });
+
     const allRooms = [];
     const visitedRooms = [];
     const pendingRooms = [];
@@ -304,29 +516,37 @@
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    const rows = Array.isArray(values) ? values.slice(2) : [];
+    const rows = Array.isArray(datosValues) ? datosValues.slice(2) : [];
+
+    // Contar ocurrencias de nombre de sala en Datos para respaldar búsqueda si cambiase Empresa
+    const datosSalaCounts = new Map();
+    rows.forEach((rawRow) => {
+      const sala = rawRow && rawRow[1] ? String(rawRow[1]).trim() : "";
+      if (sala) {
+        const sk = normalizeKey(sala);
+        datosSalaCounts.set(sk, (datosSalaCounts.get(sk) || 0) + 1);
+      }
+    });
 
     rows.forEach((rawRow, idx) => {
-      const r = Array.from({ length: 41 }, (_, i) =>
+      const r = Array.from({ length: 16 }, (_, i) =>
         rawRow[i] !== undefined && rawRow[i] !== null ? String(rawRow[i]).trim() : ""
       );
 
-      // Igual que =COUNTA(Salas) en la hoja Resumen: contamos filas con nombre de Sala
       if (!r[1]) return;
 
+      const rawEmpresa = r[0];
+      const sala = r[1];
       const fechaRaw = r[10];
       const deNosotros = r[12].toUpperCase();
       const ciudad = cleanCityName(r[2]);
       const provincia = cleanProvinceName(r[3]);
 
-      const saraDims = DIMENSIONS.map((_, i) => parseScore(r[16 + i]));
-      const miguelDims = DIMENSIONS.map((_, i) => parseScore(r[24 + i]));
-      const mediaDims = DIMENSIONS.map((_, i) => parseScore(r[32 + i]));
-
       const room = {
         id: idx + 3,
-        empresa: r[0] || "Sin empresa",
-        sala: r[1],
+        rawEmpresa,
+        empresa: rawEmpresa || "Sin empresa",
+        sala,
         ciudad: ciudad || "—",
         provincia: provincia || "Sin provincia",
         tematica: r[4] && r[4] !== "-" ? r[4] : "Sin especificar",
@@ -345,9 +565,16 @@
         exito: r[13].toUpperCase(),
         tiempoEmpleado: r[14],
         opinion: r[15],
-        sara: { dims: saraDims, general: saraDims[6], media: parseScore(r[23]) },
-        miguel: { dims: miguelDims, general: miguelDims[6], media: parseScore(r[31]) },
-        media: { dims: mediaDims, general: mediaDims[6], media: parseScore(r[39]) },
+        ratings: {},
+        sheetRowByMember: {},
+        media: {
+          dims: DIMENSIONS.map(() => null),
+          general: null,
+          media: null,
+          ratersCount: 0,
+          raterKeys: [],
+          hasAnyScore: false
+        },
         status: "draft",
         coords: null
       };
@@ -362,12 +589,11 @@
         const parts = fechaRaw.split("/");
         if (parts.length === 3) {
           const d = parseInt(parts[0], 10);
-          const m = parseInt(parts[1], 10) - 1;
+          const mIdx = parseInt(parts[1], 10) - 1;
           const y = parseInt(parts[2], 10);
-          const dt = new Date(y, m, d, 12, 0, 0);
+          const dt = new Date(y, mIdx, d, 12, 0, 0);
 
           if (y < 1950) {
-            // 30/12/1899 en Google Sheets corresponde a salas antiguas cuya fecha exacta no se anotó
             room.status = "visited";
             room.undated = true;
             room.fechaDisplay = "Sin fecha exacta";
@@ -377,27 +603,86 @@
           } else if (dt <= endOfToday || deNosotros.length > 0) {
             room.status = "visited";
             room.year = y;
-            room.fechaDisplay = `${String(d).padStart(2, "0")}/${String(m + 1).padStart(2, "0")}/${y}`;
+            room.fechaDisplay = `${String(d).padStart(2, "0")}/${String(mIdx + 1).padStart(2, "0")}/${y}`;
             room.sortTimestamp = dt.getTime();
             room.coords = resolveCoordinates(room, collisionCounter);
             visitedRooms.push(room);
           } else {
             room.status = "upcoming";
             room.year = y;
-            room.fechaDisplay = `${String(d).padStart(2, "0")}/${String(m + 1).padStart(2, "0")}/${y}`;
+            room.fechaDisplay = `${String(d).padStart(2, "0")}/${String(mIdx + 1).padStart(2, "0")}/${y}`;
             room.sortTimestamp = dt.getTime();
             upcomingRooms.push(room);
           }
         }
       }
 
+      // Cruzar valoraciones individuales de los 5 miembros (solo si han visitado la sala)
+      const exactKey = makeRoomKey(rawEmpresa, sala);
+      const salaKey = normalizeKey(sala);
+      const isUniqueSalaInDatos = datosSalaCounts.get(salaKey) === 1;
+
+      CORE_MEMBERS.forEach((m) => {
+        const pm = parsedMembers[m.key];
+        let entry = pm.byExactKey.get(exactKey) || null;
+        if (!entry && isUniqueSalaInDatos && pm.bySalaCounts.get(salaKey) === 1) {
+          entry = pm.bySalaEntry.get(salaKey) || null;
+        }
+
+        room.sheetRowByMember[m.key] = entry ? entry.rowNumber : null;
+
+        if (canMemberRateRoom(m, room) && entry) {
+          room.ratings[m.key] = {
+            dims: entry.dims.slice(),
+            general: entry.general,
+            media: entry.media,
+            hasAnyScore: entry.hasAnyScore,
+            hasMedia: entry.hasMedia
+          };
+        } else {
+          room.ratings[m.key] = {
+            dims: DIMENSIONS.map(() => null),
+            general: null,
+            media: null,
+            hasAnyScore: false,
+            hasMedia: false
+          };
+        }
+      });
+
+      // Calcular valoración general de la sala como media de TODOS los miembros que la hayan valorado
+      const ratersWithMedia = CORE_MEMBERS.filter((m) => room.ratings[m.key].media !== null);
+      const anyRaters = CORE_MEMBERS.filter((m) => room.ratings[m.key].hasAnyScore);
+
+      const mediaDims = DIMENSIONS.map((_, i) => {
+        const vals = CORE_MEMBERS.map((m) => room.ratings[m.key].dims[i]).filter((v) => v !== null);
+        if (vals.length === 0) return null;
+        return Number((vals.reduce((acc, v) => acc + v, 0) / vals.length).toFixed(2));
+      });
+
+      const globalMedia = ratersWithMedia.length
+        ? Number(
+            (
+              ratersWithMedia.reduce((acc, m) => acc + room.ratings[m.key].media, 0) /
+              ratersWithMedia.length
+            ).toFixed(2)
+          )
+        : null;
+
+      room.media = {
+        dims: mediaDims,
+        general: mediaDims[6],
+        media: globalMedia,
+        ratersCount: ratersWithMedia.length,
+        raterKeys: ratersWithMedia.map((m) => m.key),
+        hasAnyScore: anyRaters.length > 0
+      };
+
       allRooms.push(room);
     });
 
-    // Ordenar visitadas por fecha descendiente
     visitedRooms.sort((a, b) => b.sortTimestamp - a.sortTimestamp || b.id - a.id);
 
-    // Ordenar pendientes alfabéticamente por provincia y sala
     pendingRooms.sort(
       (a, b) =>
         a.provincia.localeCompare(b.provincia, "es") ||
@@ -442,6 +727,7 @@
 
   function saveSession(userObj) {
     state.user = userObj;
+    state.currentMember = resolveCurrentMember(userObj);
     try {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(userObj));
     } catch (_) {}
@@ -450,22 +736,31 @@
   function clearSessionAndData() {
     try {
       sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem("escapes_oauth_session_v2");
       sessionStorage.removeItem("escapes_oauth_session_v1");
       localStorage.removeItem("escapes_live_sheet_v1");
     } catch (_) {}
 
+    state.currentMember = null;
     state.hasData = false;
     state.needsMapRender = false;
     state.needsChartsRender = false;
+    state.needsPersonalChartsRender = false;
     state.allRooms = [];
     state.visitedRooms = [];
     state.pendingRooms = [];
     state.upcomingRooms = [];
     state.draftRooms = [];
+    state.memberSheetMeta = {};
+    state.openRoomModalId = null;
+    state.ratingRoomId = null;
 
-    if (state.charts.year) { state.charts.year.destroy(); state.charts.year = null; }
-    if (state.charts.radar) { state.charts.radar.destroy(); state.charts.radar = null; }
-    if (state.charts.themes) { state.charts.themes.destroy(); state.charts.themes = null; }
+    Object.keys(state.charts).forEach((k) => {
+      if (state.charts[k]) {
+        state.charts[k].destroy();
+        state.charts[k] = null;
+      }
+    });
     if (state.markerCluster) state.markerCluster.clearLayers();
 
     [
@@ -474,6 +769,13 @@
       "dashboard-recent",
       "dashboard-team-summary",
       "dashboard-pulse",
+      "personal-hero-copy",
+      "personal-kpis",
+      "personal-unmatched-card",
+      "personal-tbody",
+      "personal-pagination",
+      "personal-top-list",
+      "personal-affinities-list",
       "members-grid",
       "top10-grid",
       "visited-tbody",
@@ -487,7 +789,8 @@
       "team-insights-list",
       "companies-list",
       "ratings-dist-list",
-      "modal-body"
+      "modal-body",
+      "rating-modal-body"
     ].forEach((id) => {
       const node = document.getElementById(id);
       if (node) node.innerHTML = "";
@@ -497,11 +800,15 @@
       const badge = document.getElementById(id);
       if (badge) badge.textContent = "0";
     });
+    const pBadge = document.getElementById("nav-badge-personal");
+    if (pBadge) pBadge.textContent = "Personal";
   }
 
   function loadStoredSession() {
     try {
       localStorage.removeItem("escapes_live_sheet_v1");
+      sessionStorage.removeItem("escapes_oauth_session_v2");
+      sessionStorage.removeItem("escapes_oauth_session_v1");
       const raw = sessionStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
@@ -525,13 +832,15 @@
 
     if (
       window.google?.accounts?.oauth2?.hasGrantedAllScopes &&
-      !window.google.accounts.oauth2.hasGrantedAllScopes(tokenResponse, SHEETS_READONLY_SCOPE)
+      !window.google.accounts.oauth2.hasGrantedAllScopes(tokenResponse, SHEETS_SCOPE)
     ) {
       if (tokenResponse.access_token) {
-        try { window.google.accounts.oauth2.revoke(tokenResponse.access_token, () => {}); } catch (_) {}
+        try {
+          window.google.accounts.oauth2.revoke(tokenResponse.access_token, () => {});
+        } catch (_) {}
       }
       setAuthMessage(
-        `<strong>Permiso insuficiente:</strong> debes aceptar el permiso de lectura de Google Sheets para comprobar si tienes acceso a la hoja de cálculo.`
+        `<strong>Permiso insuficiente:</strong> debes aceptar el permiso de Google Sheets para poder leer la hoja y guardar tus valoraciones personales.`
       );
       return;
     }
@@ -544,6 +853,7 @@
 
     let profile = {
       name: "Usuario Google",
+      givenName: "",
       email: "",
       picture: ""
     };
@@ -556,6 +866,7 @@
         const uData = await uRes.json();
         profile = {
           name: uData.name || uData.email || profile.name,
+          givenName: uData.given_name || "",
           email: uData.email || "",
           picture: uData.picture || ""
         };
@@ -619,13 +930,13 @@
   }
 
   /* ---------------------------------------------------------
-     LECTURA DIRECTA Y EXCLUSIVA DESDE GOOGLE SHEETS API
+     LECTURA Y ESCRITURA DIRECTA EN GOOGLE SHEETS API V4
      --------------------------------------------------------- */
 
   async function fetchLiveGoogleSheet(accessToken) {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(
-      SHEET_RANGE
-    )}?valueRenderOption=FORMATTED_VALUE`;
+    const ranges = [DATOS_RANGE, ...CORE_MEMBERS.map((m) => `${m.sheet}!A1:J1000`)];
+    const qs = ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join("&");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${qs}&valueRenderOption=FORMATTED_VALUE`;
 
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -648,19 +959,114 @@
     }
 
     const data = await res.json();
+    const valueRanges = Array.isArray(data.valueRanges) ? data.valueRanges : [];
+    const datosValues = valueRanges[0]?.values || [];
+    const memberValuesByKey = {};
+
+    CORE_MEMBERS.forEach((m, idx) => {
+      memberValuesByKey[m.key] = valueRanges[idx + 1]?.values || [];
+    });
+
     return {
       updatedAt: new Date().toISOString(),
-      values: data.values || []
+      datosValues,
+      memberValuesByKey
     };
+  }
+
+  async function putSheetValues(accessToken, range, rowsValues) {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(
+      range
+    )}?valueInputOption=USER_ENTERED`;
+
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        majorDimension: "ROWS",
+        values: rowsValues
+      })
+    });
+
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        detail = errJson?.error?.message || detail;
+      } catch (_) {}
+      const err = new Error(detail);
+      err.status = res.status;
+      throw err;
+    }
+
+    return res.json();
+  }
+
+  async function savePersonalRoomRating(roomId, dimsArray) {
+    const member = state.currentMember;
+    const room = state.allRooms.find((r) => r.id === roomId);
+
+    if (!state.user?.accessToken || !member) {
+      throw new Error("Tu cuenta no está identificada como uno de los miembros del grupo.");
+    }
+    if (!room || !canMemberRateRoom(member, room)) {
+      throw new Error("Solo quienes hayan visitado este escape pueden valorarlo.");
+    }
+
+    const cleanDims = DIMENSIONS.map((_, i) => {
+      const v = dimsArray[i];
+      if (v === null || v === undefined || v === "") return "";
+      const num = Number(v);
+      if (!Number.isFinite(num) || num < 0 || num > 5) {
+        throw new Error(`El valor de «${DIMENSIONS[i]}» debe estar entre 0 y 5.`);
+      }
+      return Number(num.toFixed(2));
+    });
+
+    const existingRow = room.sheetRowByMember[member.key];
+
+    if (existingRow && existingRow >= 2) {
+      const formula = `=IF(COUNT(D${existingRow}:I${existingRow});ROUND(AVERAGE(D${existingRow}:I${existingRow});2);"")`;
+      const range = `${member.sheet}!C${existingRow}:J${existingRow}`;
+      await putSheetValues(state.user.accessToken, range, [[...cleanDims, formula]]);
+    } else {
+      const meta = state.memberSheetMeta[member.key] || { hasHeader: false, maxRowNumber: 0 };
+      let targetRow = meta.maxRowNumber + 1;
+      if (!meta.hasHeader || targetRow < 2) {
+        await putSheetValues(state.user.accessToken, `${member.sheet}!A1:J1`, [MEMBER_SHEET_HEADERS]);
+        targetRow = 2;
+      }
+      const formula = `=IF(COUNT(D${targetRow}:I${targetRow});ROUND(AVERAGE(D${targetRow}:I${targetRow});2);"")`;
+      const range = `${member.sheet}!A${targetRow}:J${targetRow}`;
+      await putSheetValues(state.user.accessToken, range, [
+        [room.rawEmpresa, room.sala, ...cleanDims, formula]
+      ]);
+    }
+
+    // Recargar en vivo desde Google Sheets para actualizar todas las estadísticas y medias
+    const freshDataset = await fetchLiveGoogleSheet(state.user.accessToken);
+    parseSheetDataset(freshDataset);
+    updateUserHeader(freshDataset);
+    renderAll();
+
+    // Si estaba abierta la ficha de detalle de esa sala, refrescarla también
+    const roomModal = document.getElementById("room-modal");
+    if (roomModal && !roomModal.hidden && state.openRoomModalId === roomId) {
+      openRoomModal(roomId);
+    }
   }
 
   function updateUserHeader(dataSourceInfo) {
     const user = state.user || { name: "Usuario", email: "", picture: "" };
+    const member = state.currentMember;
     const avatarEl = document.getElementById("user-avatar");
     const initialsEl = document.getElementById("user-initials");
     const nameEl = document.getElementById("user-name");
 
-    nameEl.textContent = user.name;
+    nameEl.textContent = member ? `${user.name} · ${member.name}` : user.name;
     nameEl.title = user.email ? `${user.name} (${user.email})` : user.name;
 
     if (user.picture) {
@@ -670,7 +1076,7 @@
     } else {
       avatarEl.hidden = true;
       initialsEl.hidden = false;
-      initialsEl.textContent = (user.name || "U").trim().charAt(0).toUpperCase();
+      initialsEl.textContent = (member ? member.key : (user.name || "U").trim().charAt(0)).toUpperCase();
     }
 
     const badge = document.getElementById("data-source-badge");
@@ -684,7 +1090,8 @@
 
     badge.textContent = `● En vivo (${timeText})`;
     badge.style.color = "#34d399";
-    footerInfo.textContent = `Acceso verificado (${user.email || user.name}) · Leído en directo de Google Sheets`;
+    const memberTxt = member ? ` · Miembro: ${member.name} (hoja ${member.sheet})` : "";
+    footerInfo.textContent = `Acceso verificado (${user.email || user.name})${memberTxt}`;
   }
 
   async function verifyAndUnlockDashboard(candidateUser) {
@@ -693,7 +1100,6 @@
     try {
       const dataset = await fetchLiveGoogleSheet(candidateUser.accessToken);
 
-      // Permiso verificado con éxito en Google Sheets
       saveSession(candidateUser);
       clearAuthMessage();
       setLoginLoading(false);
@@ -701,10 +1107,9 @@
       document.getElementById("auth-gate").hidden = true;
       document.getElementById("app-shell").hidden = false;
 
-      parseSheetValues(dataset.values);
+      parseSheetDataset(dataset);
       updateUserHeader(dataset);
 
-      // Mantener sección del hash si el usuario entró con enlace directo, o Dashboard por defecto
       const initialSection = resolveSectionFromHash();
       navigateToSection(initialSection, { updateHash: false, scrollTop: false });
       renderAll();
@@ -737,7 +1142,9 @@
 
       if (err.status === 403 || err.status === 404) {
         if (candidateUser.accessToken && window.google?.accounts?.oauth2?.revoke) {
-          try { window.google.accounts.oauth2.revoke(candidateUser.accessToken, () => {}); } catch (_) {}
+          try {
+            window.google.accounts.oauth2.revoke(candidateUser.accessToken, () => {});
+          } catch (_) {}
         }
         state.user = null;
         clearSessionAndData();
@@ -776,6 +1183,7 @@
     updateSidebarBadges();
     renderHeroKpis();
     renderDashboardSummary();
+    renderPersonalSection();
     renderMembersCount();
     renderTeamSectionExtras();
     renderTop10();
@@ -786,9 +1194,9 @@
     populatePendingFilters();
     renderPendingList();
 
-    // El mapa y las gráficas en canvas se renderizan cuando su vista está visible para garantizar dimensiones exactas
     state.needsMapRender = true;
     state.needsChartsRender = true;
+    state.needsPersonalChartsRender = true;
     refreshActiveSectionVisuals();
   }
 
@@ -798,6 +1206,21 @@
     document.getElementById("nav-badge-pending").textContent = String(state.pendingRooms.length);
     document.getElementById("nav-badge-map").textContent = `${uniqueCities}`;
     document.getElementById("nav-badge-team").textContent = String(MEMBERS.length);
+
+    const personalBadge = document.getElementById("nav-badge-personal");
+    if (personalBadge) {
+      if (state.currentMember) {
+        const myRooms = state.visitedRooms.filter((r) =>
+          r.deNosotros.includes(state.currentMember.key)
+        );
+        const unrated = myRooms.filter(
+          (r) => !r.ratings[state.currentMember.key]?.hasAnyScore
+        ).length;
+        personalBadge.textContent = unrated > 0 ? `${state.currentMember.name} · ${unrated}` : state.currentMember.name;
+      } else {
+        personalBadge.textContent = "Personal";
+      }
+    }
 
     const quickStats = document.getElementById("sidebar-quick-stats");
     if (quickStats) {
@@ -889,7 +1312,7 @@
           <span class="kpi-arrow">→</span>
         </div>
         <div class="kpi-value">${fmtScore(globalAvg)} <small style="font-size:0.52em;color:var(--gold)">/ 5</small></div>
-        <div class="kpi-sub">${rated.length} salas puntuadas · Ver Top 10</div>
+        <div class="kpi-sub">${rated.length} salas valoradas por el grupo · Top 10</div>
       </button>
 
       <button type="button" class="kpi-tile" data-nav-target="mapa">
@@ -910,7 +1333,7 @@
   }
 
   function renderDashboardSummary() {
-    // 1. Podio Top 3 (Media Global)
+    // 1. Podio Top 3 (Media Global de todos los miembros que valoraron)
     const top3 = state.visitedRooms
       .filter((r) => r.media.media !== null)
       .slice()
@@ -943,7 +1366,7 @@
                 </div>
                 <div class="dash-row-right">
                   <span class="score-pill">★ ${fmtScore(r.media.media)}</span>
-                  <span class="dash-date-tag">${escapeHtml(r.fechaDisplay)}</span>
+                  <span class="dash-date-tag">${r.media.ratersCount} val. · ${escapeHtml(r.fechaDisplay)}</span>
                 </div>
               </button>
             `;
@@ -1028,7 +1451,7 @@
       });
     });
 
-    // 4. Hoja de ruta (próximas reservas, pulso anual y provincias pendientes top)
+    // 4. Hoja de ruta y pulso
     const byYear = {};
     state.visitedRooms.forEach((r) => {
       if (r.year && !r.undated) {
@@ -1121,7 +1544,7 @@
       </div>
 
       <div class="pulse-quick-links">
-        <button type="button" class="btn-link-action" data-nav-target="mapa">🗺️ Abrir mapa interactivo →</button>
+        <button type="button" class="btn-link-action" data-nav-target="personal">⭐ Valorar mis salas en Mi Espacio →</button>
         <button type="button" class="btn-link-action" data-nav-target="estadisticas">📊 Ver estadísticas avanzadas →</button>
       </div>
     `;
@@ -1141,6 +1564,883 @@
         navigateToSection(btn.getAttribute("data-nav-target"));
       });
     });
+  }
+
+  /* ---------------------------------------------------------
+     SECCIÓN PERSONAL: MI ESPACIO (ESTADÍSTICAS Y VALORACIÓN)
+     --------------------------------------------------------- */
+
+  function renderPersonalSection() {
+    const member = state.currentMember;
+    const heroCopy = document.getElementById("personal-hero-copy");
+    const kpisEl = document.getElementById("personal-kpis");
+    const unmatchedCard = document.getElementById("personal-unmatched-card");
+    const memberContent = document.getElementById("personal-member-content");
+
+    if (!member) {
+      const displayName = state.user?.name || state.user?.email || "Usuario";
+      heroCopy.innerHTML = `
+        <div class="eyebrow">
+          <span class="eyebrow-key">👤 ZONA PERSONAL</span>
+        </div>
+        <h2 id="heading-personal">Hola, <span class="text-gradient">${escapeHtml(displayName)}</span></h2>
+        <p class="hero-lead">
+          Las valoraciones personales están vinculadas al nombre de tu cuenta de Google con los integrantes del grupo (Sara, Miguel, Rafa/Rafael, Antonio y Joan).
+        </p>
+      `;
+      kpisEl.innerHTML = "";
+      unmatchedCard.hidden = false;
+      memberContent.hidden = true;
+      unmatchedCard.innerHTML = `
+        <span class="section-kicker">CUENTA SIN PERFIL DE INTEGRANTE</span>
+        <h4>No se ha encontrado hoja personal para «${escapeHtml(displayName)}»</h4>
+        <p class="panel-sub" style="font-size:0.9rem;line-height:1.6">
+          Solo los miembros registrados del equipo (<strong>Sara, Miguel, Rafa/Rafael, Antonio y Joan</strong>) pueden añadir valoraciones a las salas que hayan visitado. Puedes seguir consultando todas las estadísticas generales del grupo desde el menú lateral.
+        </p>
+      `;
+      return;
+    }
+
+    unmatchedCard.hidden = true;
+    memberContent.hidden = false;
+
+    const myVisited = state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+    const myRated = myVisited.filter((r) => r.ratings[member.key]?.hasMedia);
+    const myAnyRated = myVisited.filter((r) => r.ratings[member.key]?.hasAnyScore);
+    const pendingRateCount = myVisited.length - myAnyRated.length;
+
+    const myAvg = myRated.length
+      ? myRated.reduce((acc, r) => acc + r.ratings[member.key].media, 0) / myRated.length
+      : null;
+
+    // Comparativa de exigencia/generosidad frente a la media del grupo en esas mismas salas
+    const sharedComparison = myRated.filter((r) => r.media.media !== null && r.media.ratersCount >= 2);
+    let diffText = "Media sobre 6 criterios (sin Dificultad)";
+    if (sharedComparison.length > 0) {
+      const delta =
+        sharedComparison.reduce(
+          (acc, r) => acc + (r.ratings[member.key].media - r.media.media),
+          0
+        ) / sharedComparison.length;
+      const sign = delta > 0.01 ? "+" : "";
+      diffText = `${sign}${fmtScore(delta)} frente a la media grupal (${sharedComparison.length} salas compartidas)`;
+    }
+
+    const exOk = myVisited.filter((r) => r.exito === "S").length;
+    const exFail = myVisited.filter((r) => r.exito === "N").length;
+    const winPct =
+      exOk + exFail > 0 ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",") : "—";
+
+    const topMyRoom = myRated
+      .slice()
+      .sort(
+        (a, b) =>
+          (b.ratings[member.key].media ?? 0) - (a.ratings[member.key].media ?? 0) ||
+          (b.ratings[member.key].general ?? 0) - (a.ratings[member.key].general ?? 0) ||
+          a.id - b.id
+      )[0];
+
+    const attendancePct = state.visitedRooms.length
+      ? Math.round((myVisited.length / state.visitedRooms.length) * 100)
+      : 0;
+
+    heroCopy.innerHTML = `
+      <div class="eyebrow">
+        <span class="personal-identity-pill" style="background:${member.bg};color:${member.color};border-color:${member.color}55">
+          <span>${member.key}</span> · PERFIL PERSONAL DE ${escapeHtml(member.name.toUpperCase())}
+        </span>
+        <span class="subtle-badge">📄 Hoja Google Sheets: <strong>${escapeHtml(member.sheet)}</strong></span>
+      </div>
+      <h2 id="heading-personal">Espacio de <span class="text-gradient">${escapeHtml(member.name)}</span></h2>
+      <p class="hero-lead">
+        Consulta tus estadísticas individuales y puntúa únicamente las salas que has visitado. La nota media excluye automáticamente <strong>Dificultad</strong> y se guarda en directo en tu hoja <code>${escapeHtml(member.sheet)}</code>.
+      </p>
+    `;
+
+    kpisEl.innerHTML = `
+      <button type="button" class="kpi-tile" data-personal-jump="rooms-all">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Mis Salas Visitadas</span>
+          <span class="kpi-arrow">↓</span>
+        </div>
+        <div class="kpi-value" style="color:${member.color}">${myVisited.length}</div>
+        <div class="kpi-sub">${attendancePct}% del total del grupo · Éxito: <strong>${winPct}%</strong></div>
+      </button>
+
+      <button type="button" class="kpi-tile kpi-highlight" data-personal-jump="rooms-unrated">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Mis Valoraciones</span>
+          <span class="kpi-arrow">✍️</span>
+        </div>
+        <div class="kpi-value">${myAnyRated.length} <small style="font-size:0.52em;color:var(--text-secondary)">/ ${myVisited.length}</small></div>
+        <div class="kpi-sub">${
+          pendingRateCount > 0
+            ? `<strong style="color:var(--gold-bright)">${pendingRateCount} pendientes de valorar</strong> · Filtrar`
+            : `<strong style="color:#6ee7b7">¡Todas tus salas están valoradas!</strong>`
+        }</div>
+      </button>
+
+      <button type="button" class="kpi-tile" data-personal-jump="stats">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Mi Nota Media</span>
+          <span class="kpi-arrow">↓</span>
+        </div>
+        <div class="kpi-value">${fmtScore(myAvg)} <small style="font-size:0.52em;color:var(--gold)">/ 5</small></div>
+        <div class="kpi-sub">${escapeHtml(diffText)}</div>
+      </button>
+
+      <button type="button" class="kpi-tile" data-personal-top-room="${topMyRoom ? topMyRoom.id : ""}">
+        <div class="kpi-head-row">
+          <span class="kpi-label">Mi Favorita (#1)</span>
+          <span class="kpi-arrow">★</span>
+        </div>
+        <div class="kpi-value" style="font-size:1.22rem;line-height:1.25;margin-top:0.4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${
+          topMyRoom ? escapeHtml(topMyRoom.sala) : "Sin valorar aún"
+        }</div>
+        <div class="kpi-sub">${
+          topMyRoom
+            ? `★ ${fmtScore(topMyRoom.ratings[member.key].media)} · ${escapeHtml(topMyRoom.empresa)}`
+            : "Puntúa tus salas abajo para generar tu ranking"
+        }</div>
+      </button>
+    `;
+
+    kpisEl.querySelectorAll("[data-personal-jump]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-personal-jump");
+        if (target === "rooms-unrated") {
+          setPersonalStatusFilter("UNRATED");
+          document.getElementById("personal-rooms-anchor")?.scrollIntoView({ behavior: "smooth" });
+        } else if (target === "rooms-all") {
+          setPersonalStatusFilter("ALL");
+          document.getElementById("personal-rooms-anchor")?.scrollIntoView({ behavior: "smooth" });
+        } else if (target === "stats") {
+          document.getElementById("personal-stats-anchor")?.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+    });
+
+    const favBtn = kpisEl.querySelector("[data-personal-top-room]");
+    if (favBtn && topMyRoom) {
+      favBtn.addEventListener("click", () => openRoomModal(topMyRoom.id));
+    }
+
+    populatePersonalFilters(myVisited);
+    renderPersonalRoomsTable(myVisited);
+    renderPersonalTopAndAffinities(myVisited, myRated);
+  }
+
+  function setPersonalStatusFilter(statusVal) {
+    state.personalFilter.status = statusVal;
+    state.personalFilter.page = 1;
+    document.querySelectorAll("[data-personal-status]").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-personal-status") === statusVal);
+    });
+    if (state.currentMember) {
+      const myVisited = state.visitedRooms.filter((r) =>
+        r.deNosotros.includes(state.currentMember.key)
+      );
+      renderPersonalRoomsTable(myVisited);
+    }
+  }
+
+  function populatePersonalFilters(myVisited) {
+    const yearSelect = document.getElementById("personal-year-filter");
+    if (!yearSelect) return;
+    const currentVal = state.personalFilter.year;
+
+    const years = Array.from(new Set(myVisited.filter((r) => r.year).map((r) => r.year))).sort(
+      (a, b) => b - a
+    );
+    const hasUndated = myVisited.some((r) => r.undated);
+
+    yearSelect.innerHTML =
+      `<option value="ALL">Todos los años</option>` +
+      years.map((y) => `<option value="${y}">${y}</option>`).join("") +
+      (hasUndated ? `<option value="UNDATED">Sin fecha exacta</option>` : "");
+
+    yearSelect.value =
+      currentVal === "ALL" ||
+      (currentVal === "UNDATED" && hasUndated) ||
+      years.includes(Number(currentVal))
+        ? currentVal
+        : "ALL";
+    state.personalFilter.year = yearSelect.value;
+  }
+
+  function renderPersonalRoomsTable(myVisited) {
+    const member = state.currentMember;
+    if (!member) return;
+
+    const list =
+      myVisited || state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+    const { status, search, year, pageSize } = state.personalFilter;
+    const q = normalizeKey(search);
+
+    const unratedTotal = list.filter((r) => !r.ratings[member.key]?.hasAnyScore).length;
+    const ratedTotal = list.length - unratedTotal;
+
+    document.querySelectorAll("[data-personal-status]").forEach((btn) => {
+      const st = btn.getAttribute("data-personal-status");
+      if (st === "ALL") btn.textContent = `Todas (${list.length})`;
+      if (st === "UNRATED") btn.textContent = `Pendientes (${unratedTotal})`;
+      if (st === "RATED") btn.textContent = `Valoradas (${ratedTotal})`;
+    });
+
+    const filtered = list.filter((r) => {
+      const hasScore = Boolean(r.ratings[member.key]?.hasAnyScore);
+      if (status === "UNRATED" && hasScore) return false;
+      if (status === "RATED" && !hasScore) return false;
+      if (year === "UNDATED" && !r.undated) return false;
+      if (year !== "ALL" && year !== "UNDATED" && String(r.year) !== year) return false;
+      if (q) {
+        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.tematica}`);
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    document.getElementById("personal-rooms-count-pill").textContent = String(filtered.length);
+    const hasFilter = status !== "ALL" || Boolean(q) || year !== "ALL";
+    document.getElementById("personal-reset-btn").hidden = !hasFilter;
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (state.personalFilter.page > totalPages) state.personalFilter.page = totalPages;
+    const page = state.personalFilter.page;
+
+    const start = (page - 1) * pageSize;
+    const slice = filtered.slice(start, start + pageSize);
+
+    const tbody = document.getElementById("personal-tbody");
+    if (slice.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-secondary)">No hay salas visitadas por ti que coincidan con este filtro.</td></tr>`;
+    } else {
+      tbody.innerHTML = slice
+        .map((r) => {
+          const myR = r.ratings[member.key];
+          const myScoreHtml =
+            myR?.media !== null
+              ? `<span class="score-pill" style="border-color:${member.color}66;color:${member.color};background:${member.bg}">★ ${fmtScore(
+                  myR.media
+                )}</span>`
+              : myR?.hasAnyScore
+              ? `<span class="unrated-pill">Solo Dif: ${fmtScore(myR.dims[0])}</span>`
+              : `<span class="unrated-pill">Sin valorar</span>`;
+
+          const grpScoreHtml =
+            r.media.media !== null
+              ? `<span class="score-pill">★ ${fmtScore(r.media.media)}</span><span class="raters-sub">${
+                  r.media.ratersCount
+                } val.</span>`
+              : `<span class="date-unknown">—</span>`;
+
+          const actionBtn = myR?.hasAnyScore
+            ? `<button type="button" class="btn-rate-room" data-rate-room-id="${r.id}">✏️ Editar</button>`
+            : `<button type="button" class="btn-rate-room is-unrated" data-rate-room-id="${r.id}">✍️ Valorar</button>`;
+
+          return `
+            <tr data-room-id="${r.id}">
+              <td class="date-cell ${r.undated ? "date-unknown" : ""}">${escapeHtml(r.fechaDisplay)}</td>
+              <td>
+                <div class="room-main-title">${escapeHtml(r.sala)}</div>
+                <div class="room-sub-company">${escapeHtml(r.empresa)} · <span class="theme-tag ${themeClass(
+            r.tematica
+          )}" style="padding:0.1rem 0.4rem;font-size:0.68rem">${escapeHtml(r.tematica)}</span></div>
+              </td>
+              <td>${escapeHtml(r.ciudad)} <span class="room-sub-company">(${escapeHtml(r.provincia)})</span></td>
+              <td>${renderTeamDotsHtml(r.deNosotros)}</td>
+              <td class="col-num">${grpScoreHtml}</td>
+              <td class="col-num">${myScoreHtml}</td>
+              <td class="col-num">${actionBtn}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      tbody.querySelectorAll("button[data-rate-room-id]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openRatingModal(Number(btn.getAttribute("data-rate-room-id")));
+        });
+      });
+
+      tbody.querySelectorAll("tr[data-room-id]").forEach((tr) => {
+        tr.addEventListener("click", () => openRoomModal(Number(tr.getAttribute("data-room-id"))));
+      });
+    }
+
+    const pagBar = document.getElementById("personal-pagination");
+    const fromNum = filtered.length === 0 ? 0 : start + 1;
+    const toNum = Math.min(start + pageSize, filtered.length);
+
+    const pageBtns = [];
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
+        pageBtns.push(
+          `<button type="button" class="page-btn ${p === page ? "active" : ""}" data-p-page="${p}">${p}</button>`
+        );
+      } else if (
+        pageBtns[pageBtns.length - 1] !== `<span style="color:var(--text-muted);padding:0 4px">…</span>`
+      ) {
+        pageBtns.push(`<span style="color:var(--text-muted);padding:0 4px">…</span>`);
+      }
+    }
+
+    pagBar.innerHTML = `
+      <div class="page-info">Mostrando <strong>${fromNum}–${toNum}</strong> de <strong>${filtered.length}</strong> salas jugadas por ${escapeHtml(
+      member.name
+    )}</div>
+      <div class="page-controls">
+        <button type="button" class="page-btn" data-p-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>‹ Ant.</button>
+        ${pageBtns.join("")}
+        <button type="button" class="page-btn" data-p-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>Sig. ›</button>
+      </div>
+    `;
+
+    pagBar.querySelectorAll("button[data-p-page]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = Number(btn.getAttribute("data-p-page"));
+        if (target >= 1 && target <= totalPages) {
+          state.personalFilter.page = target;
+          renderPersonalRoomsTable();
+        }
+      });
+    });
+  }
+
+  function renderPersonalTopAndAffinities(myVisited, myRated) {
+    const member = state.currentMember;
+    if (!member) return;
+
+    // 1. Top 5 Personal
+    const top5 = myRated
+      .slice()
+      .sort(
+        (a, b) =>
+          (b.ratings[member.key].media ?? 0) - (a.ratings[member.key].media ?? 0) ||
+          (b.ratings[member.key].general ?? 0) - (a.ratings[member.key].general ?? 0) ||
+          a.id - b.id
+      )
+      .slice(0, 5);
+
+    const topEl = document.getElementById("personal-top-list");
+    topEl.innerHTML = top5.length
+      ? top5
+          .map((r, idx) => {
+            const medal = idx === 0 ? "🥇 #1" : idx === 1 ? "🥈 #2" : idx === 2 ? "🥉 #3" : `#${idx + 1}`;
+            const poster = getPosterUrl(r.sala);
+            const thumbStyle = poster
+              ? `background-image:url('${poster}')`
+              : `background:${fallbackGradient(r.tematica)}`;
+
+            return `
+              <button type="button" class="dash-row" data-room-id="${r.id}">
+                <div class="dash-podium-thumb" style="${thumbStyle}">
+                  <span class="dash-medal-badge">${medal}</span>
+                </div>
+                <div class="dash-row-main">
+                  <div class="dash-row-title">${escapeHtml(r.sala)}</div>
+                  <div class="dash-row-sub">${escapeHtml(r.empresa)} · 📍 ${escapeHtml(r.ciudad)}</div>
+                </div>
+                <div class="dash-row-right">
+                  <span class="score-pill" style="border-color:${member.color}66;color:${member.color};background:${member.bg}">Mi nota: ★ ${fmtScore(
+              r.ratings[member.key].media
+            )}</span>
+                  <span class="dash-date-tag">Grupo: ★ ${fmtScore(r.media.media)}</span>
+                </div>
+              </button>
+            `;
+          })
+          .join("")
+      : `<p class="panel-sub">Aún no has valorado ninguna sala. Usa el botón <strong>✍️ Valorar</strong> en tu tabla superior para estrenar tu ranking personal.</p>`;
+
+    topEl.querySelectorAll("[data-room-id]").forEach((btn) => {
+      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+    });
+
+    // 2. Compañeros más frecuentes y temáticas favoritas del miembro
+    const companionCounts = {};
+    MEMBERS.forEach((other) => {
+      if (other.key === member.key) return;
+      const cnt = myVisited.filter((r) => r.deNosotros.includes(other.key)).length;
+      if (cnt > 0) companionCounts[other.key] = { member: other, count: cnt };
+    });
+    const topCompanions = Object.values(companionCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+
+    const themeStats = {};
+    myVisited.forEach((r) => {
+      if (!r.tematica || r.tematica === "Sin especificar") return;
+      if (!themeStats[r.tematica]) themeStats[r.tematica] = { count: 0, myScores: [] };
+      themeStats[r.tematica].count += 1;
+      const sc = r.ratings[member.key]?.media;
+      if (sc !== null && sc !== undefined) themeStats[r.tematica].myScores.push(sc);
+    });
+    const topThemes = Object.entries(themeStats)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 4);
+
+    const maxComp = myVisited.length || 1;
+    const maxTheme = topThemes[0]?.[1]?.count || 1;
+
+    const affEl = document.getElementById("personal-affinities-list");
+    affEl.innerHTML = `
+      <div style="font-size:0.75rem;font-family:var(--font-mono);color:var(--gold);text-transform:uppercase">🤝 Compañeros inseparables</div>
+      ${
+        topCompanions.length
+          ? topCompanions
+              .map(({ member: c, count }) => {
+                const pct = Math.round((count / maxComp) * 100);
+                return `
+                  <div class="stat-bar-row">
+                    <div class="stat-bar-head">
+                      <span><span class="team-dot ${c.key === "+" ? "dot-plus" : `dot-${c.key}`}" style="margin-right:6px">${
+                  c.key
+                }</span><strong>${escapeHtml(c.name)}</strong></span>
+                      <span style="font-family:var(--font-mono);font-size:0.8rem">${count} salas juntos (${pct}%)</span>
+                    </div>
+                    <div class="stat-bar-track">
+                      <div class="stat-bar-fill" style="width:${pct}%;background:${c.color}"></div>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")
+          : `<span class="panel-sub">Sin compañeros registrados.</span>`
+      }
+      <div style="font-size:0.75rem;font-family:var(--font-mono);color:var(--cyan);text-transform:uppercase;margin-top:0.5rem">🎭 Mis temáticas más jugadas</div>
+      ${topThemes
+        .map(([tName, info]) => {
+          const avg = info.myScores.length
+            ? info.myScores.reduce((s, v) => s + v, 0) / info.myScores.length
+            : null;
+          return `
+            <div class="stat-bar-row">
+              <div class="stat-bar-head">
+                <span><strong>${escapeHtml(tName)}</strong> <span style="color:var(--text-secondary);font-size:0.78rem">(${
+            info.count
+          } salas)</span></span>
+                <span class="score-pill">${avg !== null ? `Mi media: ★ ${fmtScore(avg)}` : `${info.count} jugadas`}</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width:${Math.round((info.count / maxTheme) * 100)}%"></div>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    `;
+  }
+
+  function renderPersonalCharts() {
+    const member = state.currentMember;
+    if (!member) return;
+
+    const myVisited = state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+
+    // 1. Radar Personal vs Media del Grupo en mis salas
+    const myDimAvgs = DIMENSIONS.map((_, i) => {
+      const vals = myVisited.map((r) => r.ratings[member.key]?.dims[i] ?? null).filter((v) => v !== null);
+      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+    });
+
+    const grpDimAvgsOnMyRooms = DIMENSIONS.map((_, i) => {
+      const vals = myVisited.map((r) => r.media.dims[i]).filter((v) => v !== null);
+      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+    });
+
+    const pRadarCanvas = document.getElementById("personalRadarChart");
+    if (pRadarCanvas) {
+      if (state.charts.personalRadar) state.charts.personalRadar.destroy();
+      const nonZeroVals = [...myDimAvgs, ...grpDimAvgsOnMyRooms].filter((v) => v > 0);
+      const minScale = nonZeroVals.length ? Math.max(0, Math.floor(Math.min(...nonZeroVals) - 0.5)) : 1;
+
+      state.charts.personalRadar = new Chart(pRadarCanvas.getContext("2d"), {
+        type: "radar",
+        data: {
+          labels: DIMENSIONS,
+          datasets: [
+            {
+              label: `Mis notas (${member.name})`,
+              data: myDimAvgs,
+              borderColor: member.color,
+              backgroundColor: member.bg,
+              borderWidth: 2.3,
+              pointRadius: 3.5
+            },
+            {
+              label: "Media Grupo (en mis salas)",
+              data: grpDimAvgsOnMyRooms,
+              borderColor: "#f5b038",
+              backgroundColor: "rgba(245, 176, 56, 0.14)",
+              borderWidth: 2,
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: minScale,
+              max: 5,
+              ticks: { stepSize: 0.5, color: "#64748b", backdropColor: "transparent" },
+              grid: { color: "rgba(148,163,184,0.14)" },
+              angleLines: { color: "rgba(148,163,184,0.14)" },
+              pointLabels: { color: "#e2e8f0", font: { size: 11, weight: "600" } }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
+          }
+        }
+      });
+    }
+
+    // 2. Evolución anual personal
+    const byYear = {};
+    myVisited.forEach((r) => {
+      if (r.undated || !r.year) return;
+      if (!byYear[r.year]) byYear[r.year] = { count: 0, myScores: [] };
+      byYear[r.year].count += 1;
+      const mySc = r.ratings[member.key]?.media;
+      if (mySc !== null && mySc !== undefined) byYear[r.year].myScores.push(mySc);
+    });
+
+    const years = Object.keys(byYear)
+      .map(Number)
+      .sort((a, b) => a - b);
+    if (years.length >= 2) {
+      for (let y = years[0]; y <= years[years.length - 1]; y++) {
+        if (!byYear[y]) byYear[y] = { count: 0, myScores: [] };
+      }
+    }
+    const sortedYears = Object.keys(byYear)
+      .map(Number)
+      .sort((a, b) => a - b);
+    const counts = sortedYears.map((y) => byYear[y].count);
+    const avgs = sortedYears.map((y) => {
+      const arr = byYear[y].myScores;
+      return arr.length ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)) : null;
+    });
+
+    const pYearCanvas = document.getElementById("personalYearChart");
+    if (pYearCanvas) {
+      if (state.charts.personalYear) state.charts.personalYear.destroy();
+      state.charts.personalYear = new Chart(pYearCanvas.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: sortedYears.map(String),
+          datasets: [
+            {
+              type: "bar",
+              label: `Salas jugadas por ${member.name}`,
+              data: counts,
+              backgroundColor: member.color + "b3",
+              borderRadius: 7,
+              maxBarThickness: 38,
+              yAxisID: "y"
+            },
+            {
+              type: "line",
+              label: "Mi nota media",
+              data: avgs,
+              borderColor: "#ffd166",
+              backgroundColor: "#ffd166",
+              borderWidth: 2.3,
+              pointRadius: 4,
+              tension: 0.3,
+              spanGaps: true,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
+          },
+          scales: {
+            x: {
+              ticks: { color: "#94a3b8", font: { family: "'JetBrains Mono', monospace" } },
+              grid: { display: false }
+            },
+            y: {
+              beginAtZero: true,
+              suggestedMax: Math.max(...counts, 4) + 2,
+              ticks: { color: "#94a3b8", precision: 0 },
+              grid: { color: "rgba(148,163,184,0.1)" }
+            },
+            y1: {
+              position: "right",
+              min: 1,
+              max: 5,
+              ticks: { color: "#ffd166" },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  /* ---------------------------------------------------------
+     MODAL INTERACTIVO DE VALORACIÓN PERSONAL
+     --------------------------------------------------------- */
+
+  function openRatingModal(roomId) {
+    const member = state.currentMember;
+    const room = state.allRooms.find((r) => r.id === roomId);
+    if (!member || !room || !canMemberRateRoom(member, room)) return;
+
+    state.ratingRoomId = roomId;
+    const existing = room.ratings[member.key] || { dims: DIMENSIONS.map(() => null), hasAnyScore: false };
+    const draftDims = existing.dims.map((v) => (v !== null && Number.isFinite(v) ? v : null));
+
+    const modal = document.getElementById("rating-modal");
+    const body = document.getElementById("rating-modal-body");
+
+    const dimsHtml = DIMENSIONS.map((dim, idx) => {
+      const isDifficulty = idx === 0;
+      const curVal = draftDims[idx];
+      const inputStr = curVal !== null ? String(curVal).replace(".", ",") : "";
+
+      const chipsHtml = QUICK_SCORES.map((sc) => {
+        const isActive = curVal !== null && Math.abs(curVal - sc) < 0.001 ? "active" : "";
+        return `<button type="button" class="rating-chip ${isActive}" data-dim-idx="${idx}" data-chip-val="${sc}">${String(
+          sc
+        ).replace(".", ",")}</button>`;
+      }).join("");
+
+      return `
+        <div class="rating-dim-row ${isDifficulty ? "is-excluded" : ""}" data-dim-row="${idx}">
+          <div class="rating-dim-head">
+            <span class="rating-dim-label">
+              ${escapeHtml(dim)}
+              ${
+                isDifficulty
+                  ? `<span class="dim-note-badge">No se incluye en la media</span>`
+                  : `<span class="dim-note-badge" style="color:var(--gold-bright)">Cuenta en media</span>`
+              }
+            </span>
+          </div>
+          <div class="rating-controls-row">
+            <div class="rating-chips">
+              ${chipsHtml}
+            </div>
+            <div class="rating-input-group">
+              <input
+                type="text"
+                inputmode="decimal"
+                class="rating-num-input"
+                data-dim-input="${idx}"
+                placeholder="0–5"
+                value="${escapeHtml(inputStr)}"
+                aria-label="Nota de ${escapeHtml(dim)}"
+              />
+              <button type="button" class="rating-clear-btn" data-dim-clear="${idx}" title="Dejar sin valorar">✕</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    body.innerHTML = `
+      <span class="section-kicker" style="color:${member.color}">VALORACIÓN DE ${escapeHtml(
+      member.name.toUpperCase()
+    )} · HOJA «${escapeHtml(member.sheet)}»</span>
+      <h3 id="rating-modal-title" style="font-size:1.45rem;margin-bottom:0.25rem">${escapeHtml(room.sala)}</h3>
+      <div style="font-size:0.84rem;color:var(--text-secondary)">
+        ${escapeHtml(room.empresa)} · 📍 ${escapeHtml(room.ciudad)} (${escapeHtml(room.provincia)}) · 🗓️ ${escapeHtml(
+      room.fechaDisplay
+    )}
+      </div>
+
+      <div class="rating-live-summary">
+        <div>
+          <div style="font-size:0.75rem;font-family:var(--font-mono);color:var(--gold-bright);text-transform:uppercase">Tu media calculada</div>
+          <div style="font-size:0.78rem;color:var(--text-secondary)">Promedio de los 6 criterios (excluyendo Dificultad)</div>
+        </div>
+        <div id="rating-live-score" class="rating-live-score">★ —</div>
+      </div>
+
+      <form id="personal-rating-form" novalidate>
+        <div class="rating-dims-list">
+          ${dimsHtml}
+        </div>
+
+        <div id="rating-form-error" class="rating-form-msg" hidden></div>
+
+        <div class="rating-modal-actions">
+          ${
+            existing.hasAnyScore
+              ? `<button type="button" id="rating-delete-btn" class="btn-danger-ghost">🗑️ Borrar mi valoración</button>`
+              : `<span></span>`
+          }
+          <div class="rating-modal-actions-right">
+            <button type="button" id="rating-cancel-btn" class="btn-logout">Cancelar</button>
+            <button type="submit" id="rating-save-btn" class="btn-primary-gold">💾 Guardar en Google Sheets</button>
+          </div>
+        </div>
+      </form>
+    `;
+
+    function readDraftFromInputs() {
+      return DIMENSIONS.map((_, idx) => {
+        const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+        return parseScore(inp ? inp.value : "");
+      });
+    }
+
+    function syncRowUi(idx) {
+      const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+      const val = parseScore(inp ? inp.value : "");
+      body.querySelectorAll(`.rating-chip[data-dim-idx="${idx}"]`).forEach((chip) => {
+        const cVal = Number(chip.getAttribute("data-chip-val"));
+        chip.classList.toggle("active", val !== null && Math.abs(val - cVal) < 0.001);
+      });
+      updateLiveMedia();
+    }
+
+    function updateLiveMedia() {
+      const currentDims = readDraftFromInputs();
+      const media = computeMediaExcludingDifficulty(currentDims);
+      const liveEl = document.getElementById("rating-live-score");
+      if (liveEl) {
+        liveEl.textContent = media !== null ? `★ ${fmtScore(media)}` : "★ —";
+      }
+    }
+
+    body.querySelectorAll(".rating-chip[data-dim-idx]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const idx = Number(chip.getAttribute("data-dim-idx"));
+        const val = chip.getAttribute("data-chip-val").replace(".", ",");
+        const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+        if (inp) inp.value = val;
+        syncRowUi(idx);
+      });
+    });
+
+    body.querySelectorAll("input[data-dim-input]").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        syncRowUi(Number(inp.getAttribute("data-dim-input")));
+      });
+    });
+
+    body.querySelectorAll("button[data-dim-clear]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.getAttribute("data-dim-clear"));
+        const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+        if (inp) inp.value = "";
+        syncRowUi(idx);
+      });
+    });
+
+    document.getElementById("rating-cancel-btn")?.addEventListener("click", closeRatingModal);
+
+    const errBox = document.getElementById("rating-form-error");
+    const saveBtn = document.getElementById("rating-save-btn");
+    const delBtn = document.getElementById("rating-delete-btn");
+
+    async function executeSave(dimsToWrite, isDelete = false) {
+      if (state.isSavingRating) return;
+      state.isSavingRating = true;
+      errBox.hidden = true;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = isDelete ? "Borrando…" : "Guardando en Sheet…";
+      }
+      if (delBtn) delBtn.disabled = true;
+
+      try {
+        await savePersonalRoomRating(room.id, dimsToWrite);
+        closeRatingModal();
+        showSyncBanner(
+          isDelete
+            ? `🗑️ Valoración eliminada de la hoja <strong>${escapeHtml(member.sheet)}</strong> para «${escapeHtml(
+                room.sala
+              )}».`
+            : `✓ Valoración de <strong>${escapeHtml(room.sala)}</strong> guardada en tu hoja <strong>${escapeHtml(
+                member.sheet
+              )}</strong> y estadísticas actualizadas.`,
+          "success"
+        );
+      } catch (err) {
+        let friendly = err.message || "Error al guardar en Google Sheets.";
+        if (err.status === 403) {
+          friendly =
+            "Tu cuenta tiene acceso de solo lectura en la hoja «Escapes» o falta permiso de escritura. Asegúrate de tener rol de Editor en Google Sheets.";
+        } else if (err.status === 401) {
+          friendly = "Tu sesión OAuth ha caducado. Pulsa «Salir» y vuelve a iniciar sesión con Google.";
+        }
+        errBox.textContent = friendly;
+        errBox.hidden = false;
+      } finally {
+        state.isSavingRating = false;
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "💾 Guardar en Google Sheets";
+        }
+        if (delBtn) delBtn.disabled = false;
+      }
+    }
+
+    document.getElementById("personal-rating-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.hidden = true;
+
+      const rawStrings = DIMENSIONS.map((_, idx) => {
+        const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+        return inp ? inp.value.trim() : "";
+      });
+
+      const parsedDims = [];
+      for (let i = 0; i < DIMENSIONS.length; i++) {
+        if (!rawStrings[i]) {
+          parsedDims.push(null);
+          continue;
+        }
+        const n = parseScore(rawStrings[i]);
+        if (n === null || n < 0 || n > 5) {
+          errBox.textContent = `Revisa «${DIMENSIONS[i]}»: introduce un número entre 0 y 5 (ej. 4 o 4,5).`;
+          errBox.hidden = false;
+          return;
+        }
+        parsedDims.push(n);
+      }
+
+      if (parsedDims.every((v) => v === null)) {
+        errBox.textContent =
+          "Introduce al menos una puntuación entre 0 y 5 antes de guardar (o usa «Borrar mi valoración»).";
+        errBox.hidden = false;
+        return;
+      }
+
+      await executeSave(parsedDims, false);
+    });
+
+    if (delBtn) {
+      delBtn.addEventListener("click", async () => {
+        if (!window.confirm(`¿Seguro que quieres borrar tu valoración de «${room.sala}»?`)) return;
+        await executeSave(
+          DIMENSIONS.map(() => null),
+          true
+        );
+      });
+    }
+
+    updateLiveMedia();
+    modal.hidden = false;
+  }
+
+  function closeRatingModal() {
+    if (state.isSavingRating) return;
+    const modal = document.getElementById("rating-modal");
+    if (modal) modal.hidden = true;
+    state.ratingRoomId = null;
   }
 
   /* ---------------------------------------------------------
@@ -1179,6 +2479,11 @@
       const rated = rooms.filter((r) => r.media.media !== null);
       const avg = rated.length ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length : null;
 
+      const isCore = CORE_MEMBERS.some((cm) => cm.key === m.key);
+      const ownRatedCount = isCore
+        ? rooms.filter((r) => r.ratings[m.key]?.hasAnyScore).length
+        : null;
+
       const themeCounts = {};
       rooms.forEach((r) => {
         if (r.tematica && r.tematica !== "Sin especificar") {
@@ -1201,8 +2506,8 @@
             <div class="member-progress-bar" style="width:${Math.min(100, (count / totalVis) * 100)}%;background:${m.color}"></div>
           </div>
           <div class="member-meta">
-            <span>Media: <strong>${fmtScore(avg)}★</strong></span>
-            <span>Top: ${escapeHtml(favTheme)}</span>
+            <span>Media salas: <strong>${fmtScore(avg)}★</strong></span>
+            <span>${ownRatedCount !== null ? `${ownRatedCount}/${count} val.` : `Top: ${escapeHtml(favTheme)}`}</span>
           </div>
         </button>
       `;
@@ -1220,7 +2525,6 @@
   }
 
   function renderTeamSectionExtras() {
-    // Alineaciones míticas del equipo
     const squadCounts = {};
     state.visitedRooms.forEach((r) => {
       if (!r.deNosotros) return;
@@ -1254,7 +2558,6 @@
       })
       .join("");
 
-    // Efectividad e hitos por integrante
     const insightsEl = document.getElementById("team-insights-list");
     insightsEl.innerHTML = MEMBERS.map((m) => {
       const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
@@ -1295,8 +2598,12 @@
 
   function getScoreForRankMode(room, mode) {
     if (mode === "general") return room.media.general;
-    if (mode === "miguel") return room.miguel.media;
-    if (mode === "sara") return room.sara.media;
+    const memberMatch = CORE_MEMBERS.find(
+      (m) => m.key === mode || normalizeKey(m.name) === normalizeKey(mode)
+    );
+    if (memberMatch) {
+      return room.ratings[memberMatch.key]?.media ?? null;
+    }
     return room.media.media;
   }
 
@@ -1321,6 +2628,14 @@
 
     const top10 = candidates.slice(0, 10);
     const grid = document.getElementById("top10-grid");
+
+    if (top10.length === 0) {
+      const mName = CORE_MEMBERS.find((m) => m.key === mode)?.name || mode;
+      grid.innerHTML = `<div class="panel-card" style="grid-column:1/-1;text-align:center;color:var(--text-secondary)">Todavía no hay salas valoradas para el criterio <strong>${escapeHtml(
+        mName
+      )}</strong>.</div>`;
+      return;
+    }
 
     grid.innerHTML = top10
       .map((entry, idx) => {
@@ -1355,7 +2670,7 @@
               </div>
 
               <div class="rank-footer">
-                <span>🗓️ ${escapeHtml(r.fechaDisplay)}</span>
+                <span>🗓️ ${escapeHtml(r.fechaDisplay)} · ${r.media.ratersCount} val.</span>
                 <span>${renderTeamDotsHtml(r.deNosotros)}</span>
               </div>
             </div>
@@ -1421,7 +2736,7 @@
         <div class="map-popup">
           <h5>${escapeHtml(r.sala)}</h5>
           <p><strong>${escapeHtml(r.empresa)}</strong> · ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})</p>
-          <p>🗓️ ${escapeHtml(r.fechaDisplay)} · Nota: <strong>${fmtScore(r.media.media)}★</strong></p>
+          <p>🗓️ ${escapeHtml(r.fechaDisplay)} · Media grupo: <strong>${fmtScore(r.media.media)}★</strong> (${r.media.ratersCount} val.)</p>
           <p>Equipo: <strong>${escapeHtml(r.deNosotros || "—")}</strong> · ${escapeHtml(r.tematica)}</p>
           <button type="button" class="map-popup-btn" onclick="window.__openEscapeRoomModal(${r.id})">Ver expediente completo</button>
         </div>
@@ -1574,7 +2889,9 @@
 
           const scoreHtml =
             r.media.media !== null
-              ? `<span class="score-pill">★ ${fmtScore(r.media.media)}</span>`
+              ? `<span class="score-pill">★ ${fmtScore(r.media.media)}</span><span class="raters-sub">${
+                  r.media.ratersCount
+                } ${r.media.ratersCount === 1 ? "miembro" : "miembros"}</span>`
               : `<span class="date-unknown">Sin nota</span>`;
 
           return `
@@ -1948,19 +3265,46 @@
   }
 
   function renderExtraStats() {
-    // 1. Radar 7 criterios (Media vs Sara vs Miguel)
+    // 1. Radar 7 criterios (Media Global + cada miembro que haya valorado salas)
     const avgMedia = DIMENSIONS.map((_, i) => {
       const vals = state.visitedRooms.map((r) => r.media.dims[i]).filter((v) => v !== null);
       return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
     });
-    const avgSara = DIMENSIONS.map((_, i) => {
-      const vals = state.visitedRooms.map((r) => r.sara.dims[i]).filter((v) => v !== null);
-      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+
+    const radarDatasets = [
+      {
+        label: "Media Global",
+        data: avgMedia,
+        borderColor: "#f5b038",
+        backgroundColor: "rgba(245, 176, 56, 0.22)",
+        borderWidth: 2.3,
+        pointRadius: 3
+      }
+    ];
+
+    let allNonZero = avgMedia.filter((v) => v > 0);
+
+    CORE_MEMBERS.forEach((m) => {
+      const hasAny = state.visitedRooms.some((r) => r.ratings[m.key]?.hasAnyScore);
+      if (!hasAny) return;
+      const mData = DIMENSIONS.map((_, i) => {
+        const vals = state.visitedRooms
+          .map((r) => r.ratings[m.key]?.dims[i] ?? null)
+          .filter((v) => v !== null);
+        return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+      });
+      allNonZero = allNonZero.concat(mData.filter((v) => v > 0));
+      radarDatasets.push({
+        label: m.name,
+        data: mData,
+        borderColor: m.color,
+        backgroundColor: m.bg.replace("0.18", "0.10"),
+        borderWidth: 1.9,
+        pointRadius: 2.8
+      });
     });
-    const avgMiguel = DIMENSIONS.map((_, i) => {
-      const vals = state.visitedRooms.map((r) => r.miguel.dims[i]).filter((v) => v !== null);
-      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
-    });
+
+    const minRadar = allNonZero.length ? Math.max(0, Math.floor(Math.min(...allNonZero) - 0.5)) : 2;
 
     const radarCtx = document.getElementById("radarChart").getContext("2d");
     if (state.charts.radar) state.charts.radar.destroy();
@@ -1968,40 +3312,15 @@
       type: "radar",
       data: {
         labels: DIMENSIONS,
-        datasets: [
-          {
-            label: "Media Global",
-            data: avgMedia,
-            borderColor: "#f5b038",
-            backgroundColor: "rgba(245, 176, 56, 0.22)",
-            borderWidth: 2.2,
-            pointRadius: 3
-          },
-          {
-            label: "Miguel",
-            data: avgMiguel,
-            borderColor: "#38bdf8",
-            backgroundColor: "rgba(56, 189, 248, 0.12)",
-            borderWidth: 2,
-            pointRadius: 3
-          },
-          {
-            label: "Sara",
-            data: avgSara,
-            borderColor: "#f472b6",
-            backgroundColor: "rgba(244, 114, 182, 0.12)",
-            borderWidth: 2,
-            pointRadius: 3
-          }
-        ]
+        datasets: radarDatasets
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           r: {
-            min: 2.5,
-            max: 4.5,
+            min: minRadar,
+            max: 5,
             ticks: { stepSize: 0.5, color: "#64748b", backdropColor: "transparent" },
             grid: { color: "rgba(148,163,184,0.14)" },
             angleLines: { color: "rgba(148,163,184,0.14)" },
@@ -2170,26 +3489,62 @@
   }
 
   /* ---------------------------------------------------------
-     MODAL DE DETALLE DE SALA
+     MODAL DE DETALLE DE SALA (DESGLOSE MULTI-MIEMBRO)
      --------------------------------------------------------- */
 
   function openRoomModal(roomId) {
     const r = state.allRooms.find((item) => item.id === roomId);
     if (!r) return;
 
+    state.openRoomModalId = roomId;
     const modal = document.getElementById("room-modal");
     const body = document.getElementById("modal-body");
 
-    const rowsHtml = DIMENSIONS.map(
-      (dim, i) => `
+    // Mostrar como columnas los integrantes del grupo que visitaron la sala (o todos si ninguno consta)
+    const roomMembers = CORE_MEMBERS.filter(
+      (m) => r.deNosotros.includes(m.key) || r.ratings[m.key]?.hasAnyScore
+    );
+    const colsToShow = roomMembers.length > 0 ? roomMembers : CORE_MEMBERS;
+
+    const headerColsHtml = colsToShow
+      .map(
+        (m) => `<th class="num" style="color:${m.color}">${escapeHtml(m.name)}</th>`
+      )
+      .join("");
+
+    const rowsHtml = DIMENSIONS.map((dim, i) => {
+      const isDiff = i === 0;
+      const memberCells = colsToShow
+        .map((m) => `<td class="num">${fmtScore(r.ratings[m.key]?.dims[i])}</td>`)
+        .join("");
+
+      return `
         <tr>
-          <td>${escapeHtml(dim)}</td>
-          <td class="num">${fmtScore(r.sara.dims[i])}</td>
-          <td class="num">${fmtScore(r.miguel.dims[i])}</td>
+          <td>${escapeHtml(dim)}${isDiff ? ` <span class="dim-note-badge">no media</span>` : ""}</td>
+          ${memberCells}
           <td class="num"><strong>${fmtScore(r.media.dims[i])}</strong></td>
         </tr>
-      `
-    ).join("");
+      `;
+    }).join("");
+
+    const finalCellsHtml = colsToShow
+      .map((m) => `<td class="num"><strong>${fmtScore(r.ratings[m.key]?.media)}</strong></td>`)
+      .join("");
+
+    const canRate = canMemberRateRoom(state.currentMember, r);
+    const myHasScore = state.currentMember && r.ratings[state.currentMember.key]?.hasAnyScore;
+
+    const rateActionHtml = canRate
+      ? `<button type="button" id="modal-rate-room-btn" class="btn-rate-room ${
+          myHasScore ? "" : "is-unrated"
+        }">
+          ${myHasScore ? "✏️ Editar mi valoración" : "✍️ Añadir mi valoración"} (${escapeHtml(
+          state.currentMember.name
+        )})
+        </button>`
+      : r.status === "visited"
+      ? `<span class="unrated-pill">🔒 Solo quienes visitaron la sala pueden valorarla</span>`
+      : "";
 
     body.innerHTML = `
       <span class="section-kicker">${escapeHtml(r.empresa)} · ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})</span>
@@ -2201,12 +3556,19 @@
         ${r.jugadores ? `<span class="subtle-badge">👥 ${escapeHtml(r.jugadores)} jugadores</span>` : ""}
         ${r.tiempoMax ? `<span class="subtle-badge">⏱️ Máx: ${escapeHtml(r.tiempoMax)} min</span>` : ""}
         ${r.tiempoEmpleado ? `<span class="subtle-badge">🏁 Tiempo: ${escapeHtml(r.tiempoEmpleado)}</span>` : ""}
-        ${r.media.media !== null ? `<span class="score-pill">Media: ★ ${fmtScore(r.media.media)}</span>` : ""}
+        ${
+          r.media.media !== null
+            ? `<span class="score-pill">Media (${r.media.ratersCount}): ★ ${fmtScore(r.media.media)}</span>`
+            : ""
+        }
       </div>
 
-      <div style="margin-bottom:0.9rem">
-        <span style="font-size:0.82rem;color:var(--text-secondary);margin-right:0.5rem">Participantes del grupo:</span>
-        ${renderTeamDotsHtml(r.deNosotros)}
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.9rem">
+        <div>
+          <span style="font-size:0.82rem;color:var(--text-secondary);margin-right:0.5rem">Participantes del grupo:</span>
+          ${renderTeamDotsHtml(r.deNosotros)}
+        </div>
+        ${rateActionHtml}
       </div>
 
       ${r.masInfo ? `<p style="margin:0.5rem 0"><span class="award-badge">🏆 ${escapeHtml(r.masInfo)}</span></p>` : ""}
@@ -2218,26 +3580,30 @@
           : ""
       }
 
-      <table class="modal-scores-table">
-        <thead>
-          <tr>
-            <th>Criterio</th>
-            <th class="num" style="color:var(--col-s)">Sara</th>
-            <th class="num" style="color:var(--col-m)">Miguel</th>
-            <th class="num" style="color:var(--gold-bright)">Media</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-          <tr style="border-top:2px solid var(--border-gold)">
-            <td><strong>Nota Media Final</strong></td>
-            <td class="num"><strong>${fmtScore(r.sara.media)}</strong></td>
-            <td class="num"><strong>${fmtScore(r.miguel.media)}</strong></td>
-            <td class="num" style="color:var(--gold-bright)"><strong>★ ${fmtScore(r.media.media)}</strong></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="modal-table-wrap">
+        <table class="modal-scores-table">
+          <thead>
+            <tr>
+              <th>Criterio</th>
+              ${headerColsHtml}
+              <th class="num" style="color:var(--gold-bright)">Media</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="border-top:2px solid var(--border-gold)">
+              <td><strong>Nota Media Final</strong> <span class="dim-note-badge">sin Dificultad</span></td>
+              ${finalCellsHtml}
+              <td class="num" style="color:var(--gold-bright)"><strong>★ ${fmtScore(r.media.media)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `;
+
+    document.getElementById("modal-rate-room-btn")?.addEventListener("click", () => {
+      openRatingModal(r.id);
+    });
 
     modal.hidden = false;
   }
@@ -2249,7 +3615,6 @@
      --------------------------------------------------------- */
 
   function bindEvents() {
-    // Enlaces del menú lateral
     document.querySelectorAll(".sidebar-link[data-section-link]").forEach((link) => {
       link.addEventListener("click", (e) => {
         e.preventDefault();
@@ -2257,7 +3622,6 @@
       });
     });
 
-    // Botones estáticos de salto rápido a secciones (ej. Ver Top 10, Historial, Marca...)
     document.querySelectorAll("[data-nav-target]").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.preventDefault();
@@ -2265,12 +3629,10 @@
       });
     });
 
-    // Apertura/cierre del menú lateral en pantallas móviles/tablets
     document.getElementById("sidebar-open-btn").addEventListener("click", openMobileSidebar);
     document.getElementById("sidebar-close-btn").addEventListener("click", closeMobileSidebar);
     document.getElementById("sidebar-backdrop").addEventListener("click", closeMobileSidebar);
 
-    // Sincronización con el historial del navegador (#dashboard, #visitadas, etc.)
     window.addEventListener("hashchange", () => {
       const target = resolveSectionFromHash();
       if (target !== state.activeSection) {
@@ -2278,12 +3640,10 @@
       }
     });
 
-    // Botón principal de inicio de sesión OAuth
     document.getElementById("oauth-login-btn").addEventListener("click", () => {
       requestGoogleLogin("select_account");
     });
 
-    // Botón actualizar datos desde Google Sheet en vivo
     document.getElementById("sync-sheet-btn").addEventListener("click", async () => {
       if (state.user?.accessToken) {
         await verifyAndUnlockDashboard(state.user);
@@ -2292,7 +3652,6 @@
       }
     });
 
-    // Cerrar sesión OAuth, revocar token y limpiar todos los datos en memoria
     document.getElementById("logout-btn").addEventListener("click", () => {
       if (state.user?.accessToken && window.google?.accounts?.oauth2?.revoke) {
         try {
@@ -2308,6 +3667,7 @@
         history.replaceState(null, "", window.location.pathname + window.location.search);
       }
       document.getElementById("room-modal").hidden = true;
+      document.getElementById("rating-modal").hidden = true;
       document.getElementById("app-shell").hidden = true;
       document.getElementById("auth-gate").hidden = false;
     });
@@ -2320,6 +3680,47 @@
         state.rankMode = btn.getAttribute("data-rank-mode");
         renderTop10();
       });
+    });
+
+    // Filtros de la sección personal (Mi Espacio)
+    document.querySelectorAll(".seg-btn[data-personal-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setPersonalStatusFilter(btn.getAttribute("data-personal-status"));
+      });
+    });
+
+    document.getElementById("personal-search").addEventListener("input", (e) => {
+      state.personalFilter.search = e.target.value;
+      state.personalFilter.page = 1;
+      renderPersonalRoomsTable();
+    });
+
+    document.getElementById("personal-year-filter").addEventListener("change", (e) => {
+      state.personalFilter.year = e.target.value;
+      state.personalFilter.page = 1;
+      renderPersonalRoomsTable();
+    });
+
+    document.getElementById("personal-page-size").addEventListener("change", (e) => {
+      state.personalFilter.pageSize = Number(e.target.value) || 10;
+      state.personalFilter.page = 1;
+      renderPersonalRoomsTable();
+    });
+
+    document.getElementById("personal-reset-btn").addEventListener("click", () => {
+      state.personalFilter = {
+        status: "ALL",
+        search: "",
+        year: "ALL",
+        page: 1,
+        pageSize: state.personalFilter.pageSize
+      };
+      document.getElementById("personal-search").value = "";
+      document.getElementById("personal-year-filter").value = "ALL";
+      document.querySelectorAll(".seg-btn[data-personal-status]").forEach((b) => {
+        b.classList.toggle("active", b.getAttribute("data-personal-status") === "ALL");
+      });
+      renderPersonalRoomsTable();
     });
 
     // Botones rápidos de encuadre del mapa
@@ -2406,18 +3807,33 @@
       renderPendingList();
     });
 
-    // Cierre de modal y menú móvil con Escape
-    const modal = document.getElementById("room-modal");
+    // Cierre de modales (detalle y valoración) y menú móvil con Escape
+    const roomModal = document.getElementById("room-modal");
+    const ratingModal = document.getElementById("rating-modal");
+
     document.getElementById("modal-close-btn").addEventListener("click", () => {
-      modal.hidden = true;
+      roomModal.hidden = true;
+      state.openRoomModalId = null;
     });
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.hidden = true;
+    roomModal.addEventListener("click", (e) => {
+      if (e.target === roomModal) {
+        roomModal.hidden = true;
+        state.openRoomModalId = null;
+      }
     });
+
+    document.getElementById("rating-modal-close-btn").addEventListener("click", closeRatingModal);
+    ratingModal.addEventListener("click", (e) => {
+      if (e.target === ratingModal) closeRatingModal();
+    });
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        if (!modal.hidden) {
-          modal.hidden = true;
+        if (!ratingModal.hidden) {
+          closeRatingModal();
+        } else if (!roomModal.hidden) {
+          roomModal.hidden = true;
+          state.openRoomModalId = null;
         } else {
           closeMobileSidebar();
         }
