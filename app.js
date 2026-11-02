@@ -168,6 +168,29 @@
     return `${normalizeKey(empresa)}||${normalizeKey(sala)}`;
   }
 
+  function resolveRoomCatalog(r) {
+    if (!r) return null;
+    if (typeof window.getRoomCatalog === "function") {
+      const found = window.getRoomCatalog(r.empresa, r.sala);
+      if (found) return found;
+      if (r.rawEmpresa && r.rawEmpresa !== r.empresa) {
+        const foundRaw = window.getRoomCatalog(r.rawEmpresa, r.sala);
+        if (foundRaw) return foundRaw;
+      }
+    }
+    if (window.ROOMS_CATALOG) {
+      const k1 = makeRoomKey(r.empresa, r.sala);
+      if (window.ROOMS_CATALOG[k1]) return window.ROOMS_CATALOG[k1];
+      if (r.rawEmpresa) {
+        const k2 = makeRoomKey(r.rawEmpresa, r.sala);
+        if (window.ROOMS_CATALOG[k2]) return window.ROOMS_CATALOG[k2];
+      }
+      const sk = normalizeKey(r.sala);
+      if (window.ROOMS_CATALOG[sk]) return window.ROOMS_CATALOG[sk];
+    }
+    return null;
+  }
+
   function resolveCurrentMember(user) {
     if (!user) return null;
     const tokenize = (s) =>
@@ -1838,14 +1861,25 @@
             ? `<button type="button" class="btn-rate-room" data-rate-room-id="${r.id}">✏️ Editar</button>`
             : `<button type="button" class="btn-rate-room is-unrated" data-rate-room-id="${r.id}">✍️ Valorar</button>`;
 
+          const cat = resolveRoomCatalog(r);
+          const imgSrc = cat?.image || "assets/hero-bg.jpg";
+
           return `
             <tr data-room-id="${r.id}">
               <td class="date-cell ${r.undated ? "date-unknown" : ""}">${escapeHtml(r.fechaDisplay)}</td>
               <td>
-                <div class="room-main-title">${escapeHtml(r.sala)}</div>
-                <div class="room-sub-company">${escapeHtml(r.empresa)} · <span class="theme-tag ${themeClass(
+                <div class="table-room-cell">
+                  <img src="${imgSrc}" class="table-room-thumb" alt="" loading="lazy">
+                  <div class="table-room-info">
+                    <div class="table-room-title">
+                      <span>${escapeHtml(r.sala)}</span>
+                      ${cat?.url ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="table-room-link" onclick="event.stopPropagation()" title="Web oficial">↗</a>` : ""}
+                    </div>
+                    <div class="room-sub-company">${escapeHtml(r.empresa)} · <span class="theme-tag ${themeClass(
             r.tematica
           )}" style="padding:0.1rem 0.4rem;font-size:0.68rem">${escapeHtml(r.tematica)}</span></div>
+                  </div>
+                </div>
               </td>
               <td>${escapeHtml(r.ciudad)} <span class="room-sub-company">(${escapeHtml(r.provincia)})</span></td>
               <td>${renderTeamDotsHtml(r.deNosotros)}</td>
@@ -2894,12 +2928,23 @@
                 } ${r.media.ratersCount === 1 ? "miembro" : "miembros"}</span>`
               : `<span class="date-unknown">Sin nota</span>`;
 
+          const cat = resolveRoomCatalog(r);
+          const imgSrc = cat?.image || "assets/hero-bg.jpg";
+
           return `
             <tr data-room-id="${r.id}">
               <td class="date-cell ${r.undated ? "date-unknown" : ""}">${escapeHtml(r.fechaDisplay)}</td>
               <td>
-                <div class="room-main-title">${escapeHtml(r.sala)}</div>
-                <div class="room-sub-company">${escapeHtml(r.empresa)}</div>
+                <div class="table-room-cell">
+                  <img src="${imgSrc}" class="table-room-thumb" alt="" loading="lazy">
+                  <div class="table-room-info">
+                    <div class="table-room-title">
+                      <span>${escapeHtml(r.sala)}</span>
+                      ${cat?.url ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="table-room-link" onclick="event.stopPropagation()" title="Web oficial">↗</a>` : ""}
+                    </div>
+                    <div class="room-sub-company">${escapeHtml(r.empresa)}</div>
+                  </div>
+                </div>
               </td>
               <td>${escapeHtml(r.ciudad)} <span class="room-sub-company">(${escapeHtml(r.provincia)})</span></td>
               <td><span class="theme-tag ${themeClass(r.tematica)}">${escapeHtml(r.tematica)}</span></td>
@@ -2971,20 +3016,35 @@
       <h4 style="font-size:1.1rem">📅 Próximas reservas con fecha (${state.upcomingRooms.length})</h4>
       <div class="upcoming-cards-row">
         ${state.upcomingRooms
-          .map(
-            (r) => `
-              <div class="upcoming-mini-card">
-                <div style="font-family:var(--font-mono);font-size:0.75rem;color:#6ee7b7">${escapeHtml(r.fechaDisplay)} · ${escapeHtml(
+          .map((r) => {
+            const cat = resolveRoomCatalog(r);
+            const imgSrc = cat?.image || "assets/hero-bg.jpg";
+            return `
+              <div class="upcoming-mini-card" data-room-id="${r.id}">
+                <img src="${imgSrc}" class="upcoming-thumb" alt="${escapeHtml(r.sala)}" loading="lazy">
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:var(--font-mono);font-size:0.75rem;color:#6ee7b7">${escapeHtml(r.fechaDisplay)} · ${escapeHtml(
               r.ciudad
             )}</div>
-                <div style="font-weight:700;color:#fff;margin-top:0.15rem">${escapeHtml(r.sala)}</div>
-                <div style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(r.empresa)}</div>
+                  <div style="font-weight:700;color:#fff;margin-top:0.15rem;display:flex;align-items:center;gap:0.35rem">
+                    <span>${escapeHtml(r.sala)}</span>
+                    ${cat?.url ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="table-room-link" onclick="event.stopPropagation()" title="Web oficial">↗</a>` : ""}
+                  </div>
+                  <div style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(r.empresa)}</div>
+                  ${cat?.description ? `<p class="pending-desc" style="-webkit-line-clamp:2;margin-top:0.3rem">${escapeHtml(cat.description)}</p>` : ""}
+                </div>
               </div>
-            `
-          )
+            `;
+          })
           .join("")}
       </div>
     `;
+
+    wrap.querySelectorAll(".upcoming-mini-card[data-room-id]").forEach((card) => {
+      card.addEventListener("click", () => {
+        openRoomModal(Number(card.getAttribute("data-room-id")));
+      });
+    });
   }
 
   function populatePendingFilters() {
@@ -3056,7 +3116,9 @@
       if (province !== "ALL" && r.provincia !== province) return false;
       if (theme !== "ALL" && r.tematica !== theme) return false;
       if (q) {
-        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.masInfo} ${r.tematica}`);
+        const cat = resolveRoomCatalog(r);
+        const desc = cat?.description ? normalizeKey(cat.description) : "";
+        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.masInfo} ${r.tematica} ${desc}`);
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -3072,6 +3134,8 @@
 
     grid.innerHTML = filtered
       .map((r) => {
+        const cat = resolveRoomCatalog(r);
+        const imgSrc = cat?.image || "assets/hero-bg.jpg";
         const playersTxt =
           r.minJug && r.maxJug
             ? `${r.minJug}–${r.maxJug} jug.${r.recomJug ? ` (rec. ${r.recomJug})` : ""}`
@@ -3083,22 +3147,40 @@
           : "—";
 
         return `
-          <article class="pending-card">
-            <div class="pending-card-top">
-              <span class="pending-prov">📍 ${escapeHtml(r.provincia)} · ${escapeHtml(r.ciudad)}</span>
-              <span class="theme-tag ${themeClass(r.tematica)}">${escapeHtml(r.tematica)}</span>
+          <article class="pending-card" data-room-id="${r.id}">
+            <div class="pending-card-media" style="background-image:url('${imgSrc}')">
+              <div class="pending-card-top">
+                <span class="pending-prov">📍 ${escapeHtml(r.provincia)} · ${escapeHtml(r.ciudad)}</span>
+                <span class="theme-tag ${themeClass(r.tematica)}">${escapeHtml(r.tematica)}</span>
+              </div>
             </div>
-            <div class="pending-title">${escapeHtml(r.sala)}</div>
-            <div class="pending-company">${escapeHtml(r.empresa)}</div>
-            ${r.masInfo ? `<span class="award-badge">🏆 ${escapeHtml(r.masInfo)}</span>` : ""}
-            <div class="pending-specs">
-              <span>👥 ${escapeHtml(playersTxt)}</span>
-              <span>⏱️ ${escapeHtml(durTxt)}</span>
+            <div class="pending-card-body">
+              <div class="pending-title">${escapeHtml(r.sala)}</div>
+              <div class="pending-company">${escapeHtml(r.empresa)}</div>
+              ${r.masInfo ? `<span class="award-badge">🏆 ${escapeHtml(r.masInfo)}</span>` : ""}
+              ${cat?.description ? `<p class="pending-desc">${escapeHtml(cat.description)}</p>` : ""}
+              <div class="pending-specs">
+                <div class="pending-specs-meta">
+                  <span>👥 ${escapeHtml(playersTxt)}</span>
+                  <span>⏱️ ${escapeHtml(durTxt)}</span>
+                </div>
+                ${cat?.url ? `
+                  <a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="pending-web-link" onclick="event.stopPropagation()">
+                    ${cat.closed ? "📁 Ficha ↗" : "🌐 Web ↗"}
+                  </a>
+                ` : ""}
+              </div>
             </div>
           </article>
         `;
       })
       .join("");
+
+    grid.querySelectorAll(".pending-card[data-room-id]").forEach((card) => {
+      card.addEventListener("click", () => {
+        openRoomModal(Number(card.getAttribute("data-room-id")));
+      });
+    });
   }
 
   /* ---------------------------------------------------------
@@ -3546,9 +3628,28 @@
       ? `<span class="unrated-pill">🔒 Solo quienes visitaron la sala pueden valorarla</span>`
       : "";
 
+    const cat = resolveRoomCatalog(r);
+    const heroImg = cat?.image || "assets/hero-bg.jpg";
+    const webBtnHtml = cat?.url
+      ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="btn-room-website ${cat.closed ? "is-archived" : ""}">
+          ${cat.closed ? "📁 Ficha histórica / archivada ↗" : "🌐 Visitar web oficial ↗"}
+        </a>`
+      : "";
+
     body.innerHTML = `
-      <span class="section-kicker">${escapeHtml(r.empresa)} · ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})</span>
-      <h3 id="modal-room-title" style="font-size:1.55rem;margin-bottom:0.5rem">${escapeHtml(r.sala)}</h3>
+      <div class="modal-hero" style="background-image:url('${heroImg}')">
+        <div class="modal-hero-content">
+          <div class="modal-hero-left">
+            <span class="section-kicker" style="color:var(--cyan);text-shadow:0 2px 4px rgba(0,0,0,0.85)">
+              ${escapeHtml(r.empresa)} · ${escapeHtml(r.ciudad)} (${escapeHtml(r.provincia)})
+            </span>
+            <h3 id="modal-room-title" style="font-size:1.6rem;margin:0;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.9)">
+              ${escapeHtml(r.sala)}
+            </h3>
+          </div>
+          ${webBtnHtml}
+        </div>
+      </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:1rem">
         <span class="theme-tag ${themeClass(r.tematica)}">${escapeHtml(r.tematica)}</span>
@@ -3563,6 +3664,15 @@
         }
       </div>
 
+      ${
+        cat?.description
+          ? `<div class="modal-synopsis">
+              <span class="modal-synopsis-label">📖 Sinopsis oficial</span>
+              <p>${escapeHtml(cat.description)}</p>
+            </div>`
+          : ""
+      }
+
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.9rem">
         <div>
           <span style="font-size:0.82rem;color:var(--text-secondary);margin-right:0.5rem">Participantes del grupo:</span>
@@ -3574,7 +3684,7 @@
       ${r.masInfo ? `<p style="margin:0.5rem 0"><span class="award-badge">🏆 ${escapeHtml(r.masInfo)}</span></p>` : ""}
       ${
         r.opinion
-          ? `<p style="background:rgba(255,255,255,0.04);padding:0.75rem;border-radius:10px;font-size:0.88rem">${escapeHtml(
+          ? `<p style="background:rgba(255,255,255,0.04);padding:0.75rem;border-radius:10px;font-size:0.88rem;margin-bottom:1rem"><strong>Opinión del equipo:</strong> ${escapeHtml(
               r.opinion
             )}</p>`
           : ""

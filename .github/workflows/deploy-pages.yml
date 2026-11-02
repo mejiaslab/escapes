@@ -28,7 +28,7 @@ jobs:
       - name: Preparar paquete estático (_site, sin datos estáticos)
         run: |
           mkdir -p _site/assets
-          cp index.html styles.css locations.js app.js favicon.svg _site/
+          cp index.html styles.css locations.js rooms-catalog.js app.js favicon.svg _site/
           cp -r assets/* _site/assets/
           touch _site/.nojekyll
 
