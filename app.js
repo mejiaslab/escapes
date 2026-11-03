@@ -3064,13 +3064,67 @@
   }
 
   function populatePendingFilters() {
-    const provCounts = {};
-    const themeCounts = {};
+    // Normalizar state.pendingFilter.themes como array
+    if (!Array.isArray(state.pendingFilter.themes)) {
+      if (state.pendingFilter.theme && state.pendingFilter.theme !== "ALL") {
+        state.pendingFilter.themes = [state.pendingFilter.theme];
+      } else {
+        state.pendingFilter.themes = [];
+      }
+    }
 
-    state.pendingRooms.forEach((r) => {
-      provCounts[r.provincia] = (provCounts[r.provincia] || 0) + 1;
-      themeCounts[r.tematica] = (themeCounts[r.tematica] || 0) + 1;
+    // 1. Faceta de temáticas: si hay una provincia seleccionada, las temáticas disponibles
+    // se restringen exclusivamente a las presentes en las salas pendientes de esa provincia.
+    let themeFacetRooms = state.pendingRooms;
+    if (state.pendingFilter.province && state.pendingFilter.province !== "ALL") {
+      themeFacetRooms = state.pendingRooms.filter(
+        (r) => r.provincia === state.pendingFilter.province
+      );
+    }
+
+    const themeCounts = {};
+    themeFacetRooms.forEach((r) => {
+      if (r.tematica) {
+        themeCounts[r.tematica] = (themeCounts[r.tematica] || 0) + 1;
+      }
     });
+
+    // Podar temáticas seleccionadas que ya no existan en la provincia actual
+    state.pendingFilter.themes = state.pendingFilter.themes.filter(
+      (t) => Boolean(themeCounts[t])
+    );
+
+    // 2. Faceta de provincias: si hay temática(s) seleccionada(s), las provincias disponibles
+    // se restringen exclusivamente a aquellas que tengan salas pendientes con alguna de las temáticas marcadas.
+    let provFacetRooms = state.pendingRooms;
+    if (state.pendingFilter.themes.length > 0) {
+      provFacetRooms = state.pendingRooms.filter((r) =>
+        state.pendingFilter.themes.includes(r.tematica)
+      );
+    }
+
+    const provCounts = {};
+    provFacetRooms.forEach((r) => {
+      if (r.provincia) {
+        provCounts[r.provincia] = (provCounts[r.provincia] || 0) + 1;
+      }
+    });
+
+    // Si la provincia actual no tiene salas con las temáticas seleccionadas, revertir a "ALL"
+    if (
+      state.pendingFilter.province !== "ALL" &&
+      !provCounts[state.pendingFilter.province]
+    ) {
+      state.pendingFilter.province = "ALL";
+      // Al volver a "ALL", recalculamos temáticas disponibles con todas las salas pendientes
+      themeFacetRooms = state.pendingRooms;
+      for (const k of Object.keys(themeCounts)) delete themeCounts[k];
+      themeFacetRooms.forEach((r) => {
+        if (r.tematica) {
+          themeCounts[r.tematica] = (themeCounts[r.tematica] || 0) + 1;
+        }
+      });
+    }
 
     const provList = Object.entries(provCounts).sort(
       (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es")
@@ -3082,21 +3136,13 @@
     const provSelect = document.getElementById("pending-province-select");
     if (provSelect) {
       provSelect.innerHTML =
-        `<option value="ALL">Todas las provincias (${state.pendingRooms.length})</option>` +
+        `<option value="ALL">Todas las provincias (${provFacetRooms.length})</option>` +
         provList
           .map(([p, c]) => `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${c})</option>`)
           .join("");
       provSelect.value = state.pendingFilter.province;
     }
 
-    // Normalizar state.pendingFilter.themes como array
-    if (!Array.isArray(state.pendingFilter.themes)) {
-      if (state.pendingFilter.theme && state.pendingFilter.theme !== "ALL") {
-        state.pendingFilter.themes = [state.pendingFilter.theme];
-      } else {
-        state.pendingFilter.themes = [];
-      }
-    }
     const selectedThemes = state.pendingFilter.themes;
 
     // Renderizar opciones de multiselección en el dropdown
@@ -3108,7 +3154,7 @@
           <input type="checkbox" class="multiselect-checkbox" value="ALL" ${allSelected ? "checked" : ""}>
           <span class="multiselect-option-label">
             <span><strong>Todas las temáticas</strong></span>
-            <span class="multiselect-count">${state.pendingRooms.length}</span>
+            <span class="multiselect-count">${themeFacetRooms.length}</span>
           </span>
         </label>
       `;
@@ -3141,6 +3187,11 @@
         labelEl.textContent = "Todas las temáticas";
         badgeEl.hidden = true;
         trigger.classList.remove("has-active-selection");
+      } else if (themeList.length > 0 && selectedThemes.length === themeList.length) {
+        labelEl.textContent = `Todas (${selectedThemes.length})`;
+        badgeEl.textContent = String(selectedThemes.length);
+        badgeEl.hidden = false;
+        trigger.classList.add("has-active-selection");
       } else if (selectedThemes.length === 1) {
         labelEl.textContent = selectedThemes[0];
         badgeEl.textContent = "1";
@@ -3183,7 +3234,7 @@
     if (chipsContainer) {
       chipsContainer.innerHTML =
         `<button type="button" class="prov-chip ${state.pendingFilter.province === "ALL" ? "active" : ""}" data-prov="ALL">Todas <b>${
-          state.pendingRooms.length
+          provFacetRooms.length
         }</b></button>` +
         provList
           .map(
@@ -4080,8 +4131,20 @@
 
     if (themeSelectAllBtn) {
       themeSelectAllBtn.addEventListener("click", () => {
-        state.pendingFilter.themes = [];
+        let availableRooms = state.pendingRooms;
+        if (state.pendingFilter.province && state.pendingFilter.province !== "ALL") {
+          availableRooms = state.pendingRooms.filter(
+            (r) => r.provincia === state.pendingFilter.province
+          );
+        }
+        const availableThemes = Array.from(
+          new Set(availableRooms.map((r) => r.tematica).filter(Boolean))
+        );
+        state.pendingFilter.themes = availableThemes;
         populatePendingFilters();
+        if (themeSearchInput && themeSearchInput.value) {
+          filterThemeOptions(themeSearchInput.value);
+        }
         renderPendingList();
       });
     }
@@ -4090,6 +4153,9 @@
       themeClearBtn.addEventListener("click", () => {
         state.pendingFilter.themes = [];
         populatePendingFilters();
+        if (themeSearchInput && themeSearchInput.value) {
+          filterThemeOptions(themeSearchInput.value);
+        }
         renderPendingList();
       });
     }
@@ -4116,6 +4182,9 @@
           }
         }
         populatePendingFilters();
+        if (themeSearchInput && themeSearchInput.value) {
+          filterThemeOptions(themeSearchInput.value);
+        }
         renderPendingList();
       });
     }
