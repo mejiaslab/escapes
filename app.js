@@ -11,6 +11,7 @@
     "719597836416-s3lfcptc71809rjbk3f720ilhv8rnpk6.apps.googleusercontent.com";
   const SPREADSHEET_ID = "1riZ1aM8txI27Zpm11VJzVv1mqGuCvDvZKilcs2n_Djg";
   const DATOS_RANGE = "Datos!A1:P1000";
+  const CARTO_API_KEY = "cb1_51u6_1_8cba597fff672cc3c6e07753";
 
   const SESSION_KEY = "escapes_oauth_session_v3";
   const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -2751,7 +2752,11 @@
         scrollWheelZoom: false
       }).setView([40.35, -3.4], 6);
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      const cartoTileUrl = CARTO_API_KEY
+        ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`
+        : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+      L.tileLayer(cartoTileUrl, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
         subdomains: "abcd",
         maxZoom: 19
