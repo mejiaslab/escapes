@@ -2753,7 +2753,7 @@
       }).setView([40.35, -3.4], 6);
 
       const cartoTileUrl = CARTO_API_KEY
-        ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`
+        ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`
         : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
       L.tileLayer(cartoTileUrl, {
