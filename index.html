@@ -69,6 +69,27 @@
     </div>
   </main>
 
+  <!-- INTRO CINEMATOGRÁFICA -->
+  <div id="intro-screen" class="intro-screen" hidden>
+    <video
+      id="intro-video"
+      class="intro-video"
+      preload="metadata"
+      playsinline
+    >
+      <source src="assets/Intro-monja.mp4" type="video/mp4" />
+    </video>
+
+    <div class="intro-controls">
+      <button id="intro-sound-btn" class="intro-ctrl-btn" type="button" aria-label="Activar o desactivar sonido" title="Activar sonido" hidden>
+        <span id="intro-sound-icon" aria-hidden="true">🔇</span>
+      </button>
+      <button id="intro-skip-btn" class="intro-ctrl-btn intro-skip-btn" type="button" aria-label="Saltar introducción">
+        SALTAR INTRO →
+      </button>
+    </div>
+  </div>
+
   <!-- =========================================================
        APLICACIÓN PRINCIPAL CON MENÚ LATERAL (TRAS AUTENTICACIÓN)
        ========================================================= -->

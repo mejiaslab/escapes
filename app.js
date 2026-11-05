@@ -905,7 +905,7 @@
       exp: Math.floor(Date.now() / 1000) + expiresIn
     };
 
-    await verifyAndUnlockDashboard(candidateUser);
+    await verifyAndUnlockDashboard(candidateUser, { showIntro: true });
   }
 
   function handleOAuthError(err) {
@@ -931,7 +931,7 @@
   function initGoogleOAuth() {
     const existing = loadStoredSession();
     if (existing) {
-      verifyAndUnlockDashboard(existing);
+      verifyAndUnlockDashboard(existing, { showIntro: false });
     }
 
     let attempts = 0;
@@ -1120,7 +1120,128 @@
     footerInfo.textContent = `Acceso verificado (${user.email || user.name})${memberTxt}`;
   }
 
-  async function verifyAndUnlockDashboard(candidateUser) {
+  const INTRO_SHOWN_KEY = "escapes_intro_seen";
+
+  function playIntroThenUnlockDashboard() {
+    const introScreen = document.getElementById("intro-screen");
+    const introVideo = document.getElementById("intro-video");
+    const skipButton = document.getElementById("intro-skip-btn");
+    const soundButton = document.getElementById("intro-sound-btn");
+    const soundIcon = document.getElementById("intro-sound-icon");
+    const appShell = document.getElementById("app-shell");
+
+    if (!introScreen || !introVideo) {
+      if (appShell) appShell.hidden = false;
+      return Promise.resolve();
+    }
+
+    introScreen.hidden = false;
+    introVideo.pause();
+
+    try {
+      introVideo.currentTime = 0;
+    } catch (_) {}
+
+    return new Promise((resolve) => {
+      let finished = false;
+
+      function updateSoundBtn() {
+        if (!soundButton || !soundIcon) return;
+        soundIcon.textContent = introVideo.muted ? "🔇" : "🔊";
+        soundButton.title = introVideo.muted ? "Activar sonido" : "Silenciar";
+      }
+
+      function finish(immediate = false) {
+        if (finished) return;
+        finished = true;
+
+        clearTimeout(startTimer);
+        document.removeEventListener("keydown", handleKeydown);
+
+        introVideo.onplaying = null;
+        introVideo.onended = null;
+        introVideo.onerror = null;
+
+        if (skipButton) {
+          skipButton.onclick = null;
+          skipButton.disabled = true;
+        }
+        if (soundButton) {
+          soundButton.onclick = null;
+          soundButton.hidden = true;
+        }
+
+        introVideo.pause();
+
+        const delay = immediate ? 0 : 300;
+        if (!immediate) {
+          introScreen.classList.add("intro-screen--ending");
+        }
+
+        setTimeout(() => {
+          introScreen.hidden = true;
+          introScreen.classList.remove("intro-screen--ending");
+          if (skipButton) skipButton.disabled = false;
+          if (appShell) appShell.hidden = false;
+          try {
+            sessionStorage.setItem(INTRO_SHOWN_KEY, "true");
+          } catch (_) {}
+          resolve();
+        }, delay);
+      }
+
+      function handleKeydown(e) {
+        if (e.key === "Escape" || e.code === "Space") {
+          e.preventDefault();
+          finish(true);
+        }
+      }
+
+      // Tiempo límite de seguridad (8s de vídeo + 4s de margen)
+      const startTimer = setTimeout(() => finish(true), 12000);
+
+      introVideo.onplaying = () => {
+        clearTimeout(startTimer);
+      };
+
+      introVideo.onended = () => finish(false);
+      introVideo.onerror = () => finish(true);
+
+      if (skipButton) {
+        skipButton.onclick = () => finish(false);
+      }
+
+      document.addEventListener("keydown", handleKeydown);
+
+      if (soundButton) {
+        soundButton.onclick = () => {
+          introVideo.muted = !introVideo.muted;
+          updateSoundBtn();
+        };
+      }
+
+      // Intentar reproducir con audio; si la política de autoplay del navegador lo bloquea, fallback a silenciado
+      introVideo.muted = false;
+      const playPromise = introVideo.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => {
+            clearTimeout(startTimer);
+          })
+          .catch(() => {
+            // Autoplay bloqueado por el navegador: reproducir silenciado y habilitar botón de sonido
+            introVideo.muted = true;
+            if (soundButton) {
+              soundButton.hidden = false;
+              updateSoundBtn();
+            }
+            introVideo.play().catch(() => finish(true));
+          });
+      }
+    });
+  }
+
+  async function verifyAndUnlockDashboard(candidateUser, { showIntro = false } = {}) {
     setLoginLoading(true, "Verificando permisos…");
 
     try {
@@ -1131,7 +1252,7 @@
       setLoginLoading(false);
 
       document.getElementById("auth-gate").hidden = true;
-      document.getElementById("app-shell").hidden = false;
+      document.getElementById("app-shell").hidden = true;
 
       parseSheetDataset(dataset);
       updateUserHeader(dataset);
@@ -1139,6 +1260,12 @@
       const initialSection = resolveSectionFromHash();
       navigateToSection(initialSection, { updateHash: false, scrollTop: false });
       renderAll();
+
+      if (showIntro) {
+        await playIntroThenUnlockDashboard();
+      } else {
+        document.getElementById("app-shell").hidden = false;
+      }
     } catch (err) {
       setLoginLoading(false);
       document.getElementById("app-shell").hidden = true;
@@ -3930,6 +4057,9 @@
         } catch (_) {}
       }
       state.user = null;
+      try {
+        sessionStorage.removeItem(INTRO_SHOWN_KEY);
+      } catch (_) {}
       clearSessionAndData();
       clearAuthMessage();
       closeMobileSidebar();
