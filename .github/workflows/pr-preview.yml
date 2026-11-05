@@ -1,0 +1,37 @@
+name: Pull Request Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-preview-${{ github.event.number }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare static package
+        if: github.event.action != 'closed'
+        run: |
+          mkdir -p _site/assets
+          cp index.html styles.css locations.js rooms-catalog.js app.js favicon.svg _site/
+          cp -r assets/* _site/assets/
+          touch _site/.nojekyll
+
+      - name: Deploy PR preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./_site
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto
