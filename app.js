@@ -25,7 +25,7 @@
       sheet: "Sara",
       aliases: ["sara"],
       color: "#f472b6",
-      bg: "rgba(244, 114, 182, 0.18)"
+      bg: "rgba(244, 114, 182, 0.18)",
     },
     {
       key: "M",
@@ -33,7 +33,7 @@
       sheet: "Miguel",
       aliases: ["miguel"],
       color: "#38bdf8",
-      bg: "rgba(56, 189, 248, 0.18)"
+      bg: "rgba(56, 189, 248, 0.18)",
     },
     {
       key: "R",
@@ -41,7 +41,7 @@
       sheet: "Rafa",
       aliases: ["rafa", "rafael"],
       color: "#34d399",
-      bg: "rgba(52, 211, 153, 0.18)"
+      bg: "rgba(52, 211, 153, 0.18)",
     },
     {
       key: "A",
@@ -49,7 +49,7 @@
       sheet: "Antonio",
       aliases: ["antonio"],
       color: "#fbbf24",
-      bg: "rgba(251, 191, 36, 0.18)"
+      bg: "rgba(251, 191, 36, 0.18)",
     },
     {
       key: "J",
@@ -57,13 +57,18 @@
       sheet: "Joan",
       aliases: ["joan"],
       color: "#a78bfa",
-      bg: "rgba(167, 139, 250, 0.18)"
-    }
+      bg: "rgba(167, 139, 250, 0.18)",
+    },
   ];
 
   const MEMBERS = [
     ...CORE_MEMBERS,
-    { key: "+", name: "Con invitados (+)", color: "#94a3b8", bg: "rgba(148, 163, 184, 0.18)" }
+    {
+      key: "+",
+      name: "Con invitados (+)",
+      color: "#94a3b8",
+      bg: "rgba(148, 163, 184, 0.18)",
+    },
   ];
 
   const DIMENSIONS = [
@@ -73,7 +78,7 @@
     "Ambientación",
     "Automatización",
     "Originalidad",
-    "General"
+    "General",
   ];
 
   const MEMBER_SHEET_HEADERS = ["Empresa", "Sala", ...DIMENSIONS, "Media"];
@@ -81,13 +86,16 @@
 
   const SECTIONS = {
     dashboard: { kicker: "VISTA GENERAL", title: "Dashboard · Resumen" },
-    personal: { kicker: "ZONA PERSONAL", title: "Mi Espacio · Estadísticas y Valoraciones" },
+    personal: {
+      kicker: "ZONA PERSONAL",
+      title: "Mi Espacio · Estadísticas y Valoraciones",
+    },
     visitadas: { kicker: "CATÁLOGO DE SALAS", title: "Salas Visitadas" },
     pendientes: { kicker: "CATÁLOGO DE SALAS", title: "Salas Pendientes" },
     ranking: { kicker: "HALL OF FAME", title: "Ranking Top 10" },
     mapa: { kicker: "CARTOGRAFÍA ESCAPISTA", title: "Mapa de Conquistas" },
     equipo: { kicker: "ANÁLISIS Y GRUPO", title: "Equipo y Alineaciones" },
-    estadisticas: { kicker: "LABORATORIO ESTADÍSTICO", title: "Estadísticas" }
+    estadisticas: { kicker: "LABORATORIO ESTADÍSTICO", title: "Estadísticas" },
   };
 
   const HASH_ALIASES = {
@@ -98,7 +106,7 @@
     valorar: "personal",
     "evolucion-mapa": "mapa",
     miguel: "ranking",
-    sara: "ranking"
+    sara: "ranking",
   };
 
   // Estado global de la aplicación
@@ -128,29 +136,29 @@
       member: "ALL",
       year: "ALL",
       page: 1,
-      pageSize: 10
+      pageSize: 10,
     },
     personalFilter: {
       status: "ALL",
       search: "",
       year: "ALL",
       page: 1,
-      pageSize: 10
+      pageSize: 10,
     },
     pendingFilter: {
       search: "",
       province: "ALL",
-      themes: []
+      themes: [],
     },
     charts: {
       year: null,
       radar: null,
       themes: null,
       personalRadar: null,
-      personalYear: null
+      personalYear: null,
     },
     map: null,
-    markerCluster: null
+    markerCluster: null,
   };
 
   /* ---------------------------------------------------------
@@ -204,16 +212,24 @@
     const fullTokens = tokenize(user.name || "");
 
     if (givenTokens.length > 0) {
-      const firstGiven = CORE_MEMBERS.find((m) => m.aliases.includes(givenTokens[0]));
+      const firstGiven = CORE_MEMBERS.find((m) =>
+        m.aliases.includes(givenTokens[0]),
+      );
       if (firstGiven) return firstGiven;
-      const anyGiven = CORE_MEMBERS.find((m) => givenTokens.some((t) => m.aliases.includes(t)));
+      const anyGiven = CORE_MEMBERS.find((m) =>
+        givenTokens.some((t) => m.aliases.includes(t)),
+      );
       if (anyGiven) return anyGiven;
     }
 
     if (fullTokens.length > 0) {
-      const firstFull = CORE_MEMBERS.find((m) => m.aliases.includes(fullTokens[0]));
+      const firstFull = CORE_MEMBERS.find((m) =>
+        m.aliases.includes(fullTokens[0]),
+      );
       if (firstFull) return firstFull;
-      const anyFull = CORE_MEMBERS.find((m) => fullTokens.some((t) => m.aliases.includes(t)));
+      const anyFull = CORE_MEMBERS.find((m) =>
+        fullTokens.some((t) => m.aliases.includes(t)),
+      );
       if (anyFull) return anyFull;
     }
 
@@ -292,11 +308,23 @@
 
   function themeClass(theme) {
     const t = normalizeKey(theme);
-    if (t.includes("terror") || t.includes("miedo") || t.includes("tension")) return "theme-terror";
+    if (t.includes("terror") || t.includes("miedo") || t.includes("tension"))
+      return "theme-terror";
     if (t.includes("aventura")) return "theme-aventuras";
-    if (t.includes("misterio") || t.includes("criminal") || t.includes("mafia")) return "theme-misterio";
-    if (t.includes("fantasia") || t.includes("medieval") || t.includes("disney")) return "theme-fantasia";
-    if (t.includes("futurista") || t.includes("vr") || t.includes("apocaliptico")) return "theme-futurista";
+    if (t.includes("misterio") || t.includes("criminal") || t.includes("mafia"))
+      return "theme-misterio";
+    if (
+      t.includes("fantasia") ||
+      t.includes("medieval") ||
+      t.includes("disney")
+    )
+      return "theme-fantasia";
+    if (
+      t.includes("futurista") ||
+      t.includes("vr") ||
+      t.includes("apocaliptico")
+    )
+      return "theme-futurista";
     return "";
   }
 
@@ -316,12 +344,17 @@
 
   function getPosterUrl(roomName) {
     const key = normalizeKey(roomName);
-    const posters = (window.ESCAPE_LOCATIONS && window.ESCAPE_LOCATIONS.posters) || {};
+    const posters =
+      (window.ESCAPE_LOCATIONS && window.ESCAPE_LOCATIONS.posters) || {};
     return posters[key] || null;
   }
 
   function resolveCoordinates(room, collisionCounter) {
-    const locs = window.ESCAPE_LOCATIONS || { venues: {}, cities: {}, provinces: {} };
+    const locs = window.ESCAPE_LOCATIONS || {
+      venues: {},
+      cities: {},
+      provinces: {},
+    };
     const empKey = normalizeKey(room.empresa);
     const cityKey = normalizeKey(room.ciudad);
     const provKey = normalizeKey(room.provincia);
@@ -342,7 +375,10 @@
 
     const angle = idx * 2.399963;
     const radius = 0.0014 * Math.sqrt(idx);
-    return [base[0] + radius * Math.cos(angle), base[1] + radius * Math.sin(angle)];
+    return [
+      base[0] + radius * Math.cos(angle),
+      base[1] + radius * Math.sin(angle),
+    ];
   }
 
   /* ---------------------------------------------------------
@@ -350,7 +386,10 @@
      --------------------------------------------------------- */
 
   function resolveSectionFromHash() {
-    const raw = (window.location.hash || "").replace(/^#/, "").trim().toLowerCase();
+    const raw = (window.location.hash || "")
+      .replace(/^#/, "")
+      .trim()
+      .toLowerCase();
     if (!raw) return "dashboard";
     if (SECTIONS[raw]) return raw;
     if (HASH_ALIASES[raw]) return HASH_ALIASES[raw];
@@ -420,15 +459,17 @@
       sec.hidden = sec.getAttribute("data-section") !== target;
     });
 
-    document.querySelectorAll(".sidebar-link[data-section-link]").forEach((link) => {
-      const isMatch = link.getAttribute("data-section-link") === target;
-      link.classList.toggle("active", isMatch);
-      if (isMatch) {
-        link.setAttribute("aria-current", "page");
-      } else {
-        link.removeAttribute("aria-current");
-      }
-    });
+    document
+      .querySelectorAll(".sidebar-link[data-section-link]")
+      .forEach((link) => {
+        const isMatch = link.getAttribute("data-section-link") === target;
+        link.classList.toggle("active", isMatch);
+        if (isMatch) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
 
     const meta = SECTIONS[target];
     const kickerEl = document.getElementById("topbar-section-kicker");
@@ -469,7 +510,9 @@
       const rawRow = rows[idx] || [];
       const rowNum = idx + 1; // 1-based en Google Sheets
       const r = Array.from({ length: 10 }, (_, i) =>
-        rawRow[i] !== undefined && rawRow[i] !== null ? String(rawRow[i]).trim() : ""
+        rawRow[i] !== undefined && rawRow[i] !== null
+          ? String(rawRow[i]).trim()
+          : "",
       );
 
       if (r.some((cell) => cell !== "")) {
@@ -493,7 +536,7 @@
         general: dims[6],
         media,
         hasAnyScore,
-        hasMedia
+        hasMedia,
       };
 
       const exactKey = makeRoomKey(empresa, sala);
@@ -511,7 +554,7 @@
       maxRowNumber,
       byExactKey,
       bySalaCounts,
-      bySalaEntry
+      bySalaEntry,
     };
   }
 
@@ -527,7 +570,7 @@
       parsedMembers[m.key] = parsed;
       state.memberSheetMeta[m.key] = {
         hasHeader: parsed.hasHeader,
-        maxRowNumber: parsed.maxRowNumber
+        maxRowNumber: parsed.maxRowNumber,
       };
     });
 
@@ -539,7 +582,15 @@
     const collisionCounter = {};
 
     const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
 
     const rows = Array.isArray(datosValues) ? datosValues.slice(2) : [];
 
@@ -555,7 +606,9 @@
 
     rows.forEach((rawRow, idx) => {
       const r = Array.from({ length: 16 }, (_, i) =>
-        rawRow[i] !== undefined && rawRow[i] !== null ? String(rawRow[i]).trim() : ""
+        rawRow[i] !== undefined && rawRow[i] !== null
+          ? String(rawRow[i]).trim()
+          : "",
       );
 
       if (!r[1]) return;
@@ -598,10 +651,10 @@
           media: null,
           ratersCount: 0,
           raterKeys: [],
-          hasAnyScore: false
+          hasAnyScore: false,
         },
         status: "draft",
-        coords: null
+        coords: null,
       };
 
       if (fechaRaw.toUpperCase() === "PENDIENTE") {
@@ -650,7 +703,11 @@
       CORE_MEMBERS.forEach((m) => {
         const pm = parsedMembers[m.key];
         let entry = pm.byExactKey.get(exactKey) || null;
-        if (!entry && isUniqueSalaInDatos && pm.bySalaCounts.get(salaKey) === 1) {
+        if (
+          !entry &&
+          isUniqueSalaInDatos &&
+          pm.bySalaCounts.get(salaKey) === 1
+        ) {
           entry = pm.bySalaEntry.get(salaKey) || null;
         }
 
@@ -662,7 +719,7 @@
             general: entry.general,
             media: entry.media,
             hasAnyScore: entry.hasAnyScore,
-            hasMedia: entry.hasMedia
+            hasMedia: entry.hasMedia,
           };
         } else {
           room.ratings[m.key] = {
@@ -670,27 +727,37 @@
             general: null,
             media: null,
             hasAnyScore: false,
-            hasMedia: false
+            hasMedia: false,
           };
         }
       });
 
       // Calcular valoración general de la sala como media de TODOS los miembros que la hayan valorado
-      const ratersWithMedia = CORE_MEMBERS.filter((m) => room.ratings[m.key].media !== null);
-      const anyRaters = CORE_MEMBERS.filter((m) => room.ratings[m.key].hasAnyScore);
+      const ratersWithMedia = CORE_MEMBERS.filter(
+        (m) => room.ratings[m.key].media !== null,
+      );
+      const anyRaters = CORE_MEMBERS.filter(
+        (m) => room.ratings[m.key].hasAnyScore,
+      );
 
       const mediaDims = DIMENSIONS.map((_, i) => {
-        const vals = CORE_MEMBERS.map((m) => room.ratings[m.key].dims[i]).filter((v) => v !== null);
+        const vals = CORE_MEMBERS.map(
+          (m) => room.ratings[m.key].dims[i],
+        ).filter((v) => v !== null);
         if (vals.length === 0) return null;
-        return Number((vals.reduce((acc, v) => acc + v, 0) / vals.length).toFixed(2));
+        return Number(
+          (vals.reduce((acc, v) => acc + v, 0) / vals.length).toFixed(2),
+        );
       });
 
       const globalMedia = ratersWithMedia.length
         ? Number(
             (
-              ratersWithMedia.reduce((acc, m) => acc + room.ratings[m.key].media, 0) /
-              ratersWithMedia.length
-            ).toFixed(2)
+              ratersWithMedia.reduce(
+                (acc, m) => acc + room.ratings[m.key].media,
+                0,
+              ) / ratersWithMedia.length
+            ).toFixed(2),
           )
         : null;
 
@@ -700,18 +767,20 @@
         media: globalMedia,
         ratersCount: ratersWithMedia.length,
         raterKeys: ratersWithMedia.map((m) => m.key),
-        hasAnyScore: anyRaters.length > 0
+        hasAnyScore: anyRaters.length > 0,
       };
 
       allRooms.push(room);
     });
 
-    visitedRooms.sort((a, b) => b.sortTimestamp - a.sortTimestamp || b.id - a.id);
+    visitedRooms.sort(
+      (a, b) => b.sortTimestamp - a.sortTimestamp || b.id - a.id,
+    );
 
     pendingRooms.sort(
       (a, b) =>
         a.provincia.localeCompare(b.provincia, "es") ||
-        a.sala.localeCompare(b.sala, "es")
+        a.sala.localeCompare(b.sala, "es"),
     );
 
     upcomingRooms.sort((a, b) => a.sortTimestamp - b.sortTimestamp);
@@ -747,7 +816,10 @@
     const btn = document.getElementById("oauth-login-btn");
     const lbl = document.getElementById("oauth-login-label");
     if (btn) btn.disabled = isLoading;
-    if (lbl) lbl.textContent = labelText || (isLoading ? "Verificando acceso…" : "Iniciar sesión con Google");
+    if (lbl)
+      lbl.textContent =
+        labelText ||
+        (isLoading ? "Verificando acceso…" : "Iniciar sesión con Google");
   }
 
   function saveSession(userObj) {
@@ -816,16 +888,18 @@
       "companies-list",
       "ratings-dist-list",
       "modal-body",
-      "rating-modal-body"
+      "rating-modal-body",
     ].forEach((id) => {
       const node = document.getElementById(id);
       if (node) node.innerHTML = "";
     });
 
-    ["nav-badge-visited", "nav-badge-pending", "nav-badge-map"].forEach((id) => {
-      const badge = document.getElementById(id);
-      if (badge) badge.textContent = "0";
-    });
+    ["nav-badge-visited", "nav-badge-pending", "nav-badge-map"].forEach(
+      (id) => {
+        const badge = document.getElementById(id);
+        if (badge) badge.textContent = "0";
+      },
+    );
     const pBadge = document.getElementById("nav-badge-personal");
     if (pBadge) pBadge.textContent = "Personal";
   }
@@ -838,7 +912,12 @@
       const raw = sessionStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.accessToken && parsed.exp && parsed.exp * 1000 > Date.now()) {
+      if (
+        parsed &&
+        parsed.accessToken &&
+        parsed.exp &&
+        parsed.exp * 1000 > Date.now()
+      ) {
         return parsed;
       }
       sessionStorage.removeItem(SESSION_KEY);
@@ -851,22 +930,28 @@
 
     if (tokenResponse.error) {
       setAuthMessage(
-        `No se completó la autorización con Google (<code>${escapeHtml(tokenResponse.error)}</code>).`
+        `No se completó la autorización con Google (<code>${escapeHtml(tokenResponse.error)}</code>).`,
       );
       return;
     }
 
     if (
       window.google?.accounts?.oauth2?.hasGrantedAllScopes &&
-      !window.google.accounts.oauth2.hasGrantedAllScopes(tokenResponse, SHEETS_SCOPE)
+      !window.google.accounts.oauth2.hasGrantedAllScopes(
+        tokenResponse,
+        SHEETS_SCOPE,
+      )
     ) {
       if (tokenResponse.access_token) {
         try {
-          window.google.accounts.oauth2.revoke(tokenResponse.access_token, () => {});
+          window.google.accounts.oauth2.revoke(
+            tokenResponse.access_token,
+            () => {},
+          );
         } catch (_) {}
       }
       setAuthMessage(
-        `<strong>Permiso insuficiente:</strong> debes aceptar el permiso de Google Sheets para poder leer la hoja y guardar tus valoraciones personales.`
+        `<strong>Permiso insuficiente:</strong> debes aceptar el permiso de Google Sheets para poder leer la hoja y guardar tus valoraciones personales.`,
       );
       return;
     }
@@ -875,26 +960,32 @@
     const expiresIn = Number(tokenResponse.expires_in || 3500);
 
     setLoginLoading(true, "Comprobando permisos en la hoja…");
-    setAuthMessage("Verificando permisos de tu cuenta sobre la hoja de cálculo <strong>Escapes</strong>…", "info");
+    setAuthMessage(
+      "Verificando permisos de tu cuenta sobre la hoja de cálculo <strong>Escapes</strong>…",
+      "info",
+    );
 
     let profile = {
       name: "Usuario Google",
       givenName: "",
       email: "",
-      picture: ""
+      picture: "",
     };
 
     try {
-      const uRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      const uRes = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
       if (uRes.ok) {
         const uData = await uRes.json();
         profile = {
           name: uData.name || uData.email || profile.name,
           givenName: uData.given_name || "",
           email: uData.email || "",
-          picture: uData.picture || ""
+          picture: uData.picture || "",
         };
       }
     } catch (_) {}
@@ -902,7 +993,7 @@
     const candidateUser = {
       ...profile,
       accessToken,
-      exp: Math.floor(Date.now() / 1000) + expiresIn
+      exp: Math.floor(Date.now() / 1000) + expiresIn,
     };
 
     await verifyAndUnlockDashboard(candidateUser);
@@ -914,8 +1005,8 @@
     if (type === "popup_closed") return;
     setAuthMessage(
       `No se pudo abrir el inicio de sesión OAuth (<code>${escapeHtml(type)}</code>). Verifica que <code>${escapeHtml(
-        window.location.origin
-      )}</code> esté en los Orígenes de JavaScript autorizados del Client ID.`
+        window.location.origin,
+      )}</code> esté en los Orígenes de JavaScript autorizados del Client ID.`,
     );
   }
 
@@ -924,7 +1015,9 @@
       clearAuthMessage();
       state.tokenClient.requestAccessToken({ prompt: promptMode });
     } else {
-      setAuthMessage("Google Identity Services aún se está cargando. Espera un instante y vuelve a pulsar.");
+      setAuthMessage(
+        "Google Identity Services aún se está cargando. Espera un instante y vuelve a pulsar.",
+      );
     }
   }
 
@@ -937,19 +1030,23 @@
     let attempts = 0;
     const timer = setInterval(() => {
       attempts += 1;
-      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+      if (
+        window.google &&
+        window.google.accounts &&
+        window.google.accounts.oauth2
+      ) {
         clearInterval(timer);
 
         state.tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: OAUTH_SCOPES,
           callback: handleOAuthTokenResponse,
-          error_callback: handleOAuthError
+          error_callback: handleOAuthError,
         });
       } else if (attempts > 40) {
         clearInterval(timer);
         setAuthMessage(
-          "No se pudo cargar Google Identity Services. Revisa bloqueadores de anuncios o tu conexión."
+          "No se pudo cargar Google Identity Services. Revisa bloqueadores de anuncios o tu conexión.",
         );
       }
     }, 200);
@@ -960,13 +1057,16 @@
      --------------------------------------------------------- */
 
   async function fetchLiveGoogleSheet(accessToken) {
-    const ranges = [DATOS_RANGE, ...CORE_MEMBERS.map((m) => `${m.sheet}!A1:J1000`)];
+    const ranges = [
+      DATOS_RANGE,
+      ...CORE_MEMBERS.map((m) => `${m.sheet}!A1:J1000`),
+    ];
     const qs = ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join("&");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${qs}&valueRenderOption=FORMATTED_VALUE`;
 
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store"
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -996,25 +1096,25 @@
     return {
       updatedAt: new Date().toISOString(),
       datosValues,
-      memberValuesByKey
+      memberValuesByKey,
     };
   }
 
   async function putSheetValues(accessToken, range, rowsValues) {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(
-      range
+      range,
     )}?valueInputOption=USER_ENTERED`;
 
     const res = await fetch(url, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         majorDimension: "ROWS",
-        values: rowsValues
-      })
+        values: rowsValues,
+      }),
     });
 
     if (!res.ok) {
@@ -1036,10 +1136,14 @@
     const room = state.allRooms.find((r) => r.id === roomId);
 
     if (!state.user?.accessToken || !member) {
-      throw new Error("Tu cuenta no está identificada como uno de los miembros del grupo.");
+      throw new Error(
+        "Tu cuenta no está identificada como uno de los miembros del grupo.",
+      );
     }
     if (!room || !canMemberRateRoom(member, room)) {
-      throw new Error("Solo quienes hayan visitado este escape pueden valorarlo.");
+      throw new Error(
+        "Solo quienes hayan visitado este escape pueden valorarlo.",
+      );
     }
 
     const cleanDims = DIMENSIONS.map((_, i) => {
@@ -1047,7 +1151,9 @@
       if (v === null || v === undefined || v === "") return "";
       const num = Number(v);
       if (!Number.isFinite(num) || num < 0 || num > 5) {
-        throw new Error(`El valor de «${DIMENSIONS[i]}» debe estar entre 0 y 5.`);
+        throw new Error(
+          `El valor de «${DIMENSIONS[i]}» debe estar entre 0 y 5.`,
+        );
       }
       return Number(num.toFixed(2));
     });
@@ -1057,18 +1163,25 @@
     if (existingRow && existingRow >= 2) {
       const formula = `=IF(COUNT(D${existingRow}:I${existingRow});ROUND(AVERAGE(D${existingRow}:I${existingRow});2);"")`;
       const range = `${member.sheet}!C${existingRow}:J${existingRow}`;
-      await putSheetValues(state.user.accessToken, range, [[...cleanDims, formula]]);
+      await putSheetValues(state.user.accessToken, range, [
+        [...cleanDims, formula],
+      ]);
     } else {
-      const meta = state.memberSheetMeta[member.key] || { hasHeader: false, maxRowNumber: 0 };
+      const meta = state.memberSheetMeta[member.key] || {
+        hasHeader: false,
+        maxRowNumber: 0,
+      };
       let targetRow = meta.maxRowNumber + 1;
       if (!meta.hasHeader || targetRow < 2) {
-        await putSheetValues(state.user.accessToken, `${member.sheet}!A1:J1`, [MEMBER_SHEET_HEADERS]);
+        await putSheetValues(state.user.accessToken, `${member.sheet}!A1:J1`, [
+          MEMBER_SHEET_HEADERS,
+        ]);
         targetRow = 2;
       }
       const formula = `=IF(COUNT(D${targetRow}:I${targetRow});ROUND(AVERAGE(D${targetRow}:I${targetRow});2);"")`;
       const range = `${member.sheet}!A${targetRow}:J${targetRow}`;
       await putSheetValues(state.user.accessToken, range, [
-        [room.rawEmpresa, room.sala, ...cleanDims, formula]
+        [room.rawEmpresa, room.sala, ...cleanDims, formula],
       ]);
     }
 
@@ -1080,7 +1193,12 @@
 
     // Si estaba abierta la ficha de detalle de esa sala y no estamos en el modal de valoración, refrescarla también
     const roomModal = document.getElementById("room-modal");
-    if (roomModal && !roomModal.hidden && state.openRoomModalId === roomId && !state.ratingRoomId) {
+    if (
+      roomModal &&
+      !roomModal.hidden &&
+      state.openRoomModalId === roomId &&
+      !state.ratingRoomId
+    ) {
       openRoomModal(roomId);
     }
   }
@@ -1102,7 +1220,9 @@
     } else {
       avatarEl.hidden = true;
       initialsEl.hidden = false;
-      initialsEl.textContent = (member ? member.key : (user.name || "U").trim().charAt(0)).toUpperCase();
+      initialsEl.textContent = (
+        member ? member.key : (user.name || "U").trim().charAt(0)
+      ).toUpperCase();
     }
 
     const badge = document.getElementById("data-source-badge");
@@ -1110,17 +1230,91 @@
     const timeText = dataSourceInfo?.updatedAt
       ? new Date(dataSourceInfo.updatedAt).toLocaleTimeString("es-ES", {
           hour: "2-digit",
-          minute: "2-digit"
+          minute: "2-digit",
         })
       : "";
 
     badge.textContent = `● En vivo (${timeText})`;
     badge.style.color = "#34d399";
-    const memberTxt = member ? ` · Miembro: ${member.name} (hoja ${member.sheet})` : "";
+    const memberTxt = member
+      ? ` · Miembro: ${member.name} (hoja ${member.sheet})`
+      : "";
     footerInfo.textContent = `Acceso verificado (${user.email || user.name})${memberTxt}`;
   }
 
-  async function verifyAndUnlockDashboard(candidateUser) {
+  function playIntroThenUnlockDashboard() {
+    const introScreen = document.getElementById("intro-screen");
+    const introVideo = document.getElementById("intro-video");
+    const skipButton = document.getElementById("intro-skip-btn");
+    const appShell = document.getElementById("app-shell");
+
+    introScreen.hidden = false;
+
+    introVideo.pause();
+
+    try {
+      introVideo.currentTime = 0;
+    } catch (_) {}
+
+    return new Promise((resolve) => {
+      let finished = false;
+
+      function finish() {
+        if (finished) return;
+
+        finished = true;
+
+        clearTimeout(startTimer);
+
+        introVideo.onplaying = null;
+        introVideo.onended = null;
+        introVideo.onerror = null;
+
+        skipButton.onclick = null;
+        skipButton.disabled = true;
+
+        introVideo.pause();
+
+        introScreen.classList.add("intro-screen--ending");
+
+        // Fundido a negro antes de mostrar la aplicación.
+        setTimeout(() => {
+          introScreen.hidden = true;
+          introScreen.classList.remove("intro-screen--ending");
+
+          skipButton.disabled = false;
+
+          appShell.hidden = false;
+
+          resolve();
+        }, 700);
+      }
+
+      // Si el vídeo no empieza en 10 segundos,
+      // permitimos entrar igualmente.
+      const startTimer = setTimeout(finish, 10000);
+
+      introVideo.onplaying = () => {
+        clearTimeout(startTimer);
+      };
+
+      introVideo.onended = finish;
+      introVideo.onerror = finish;
+
+      skipButton.onclick = finish;
+
+      const playRequest = introVideo.play();
+
+      if (playRequest && typeof playRequest.then === "function") {
+        playRequest.then(() => clearTimeout(startTimer)).catch(finish);
+      }
+    });
+  }
+
+  async function verifyAndUnlockDashboard(
+    candidateUser,
+    { showIntro = true } = {},
+  ) {
     setLoginLoading(true, "Verificando permisos…");
 
     try {
@@ -1131,14 +1325,23 @@
       setLoginLoading(false);
 
       document.getElementById("auth-gate").hidden = true;
-      document.getElementById("app-shell").hidden = false;
+      document.getElementById("app-shell").hidden = true;
 
       parseSheetDataset(dataset);
       updateUserHeader(dataset);
 
       const initialSection = resolveSectionFromHash();
-      navigateToSection(initialSection, { updateHash: false, scrollTop: false });
+      navigateToSection(initialSection, {
+        updateHash: false,
+        scrollTop: false,
+      });
       renderAll();
+
+      if (showIntro) {
+        await playIntroThenUnlockDashboard();
+      } else {
+        document.getElementById("app-shell").hidden = false;
+      }
     } catch (err) {
       setLoginLoading(false);
       document.getElementById("app-shell").hidden = true;
@@ -1157,19 +1360,27 @@
             `Para poder comprobar los permisos de la hoja y leer los datos en tiempo real, activa la API en el proyecto <code>719597836416</code>:<br>` +
             `<a href="https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=719597836416" target="_blank" rel="noopener">Abrir Google Cloud Console y pulsar «Habilitar» ↗</a><br>` +
             `<button type="button" id="retry-sheet-btn" class="auth-inline-btn">🔄 Ya la he activado · Reintentar</button>`,
-          "setup"
+          "setup",
         );
         const retryBtn = document.getElementById("retry-sheet-btn");
         if (retryBtn) {
-          retryBtn.addEventListener("click", () => verifyAndUnlockDashboard(candidateUser));
+          retryBtn.addEventListener("click", () =>
+            verifyAndUnlockDashboard(candidateUser),
+          );
         }
         return;
       }
 
       if (err.status === 403 || err.status === 404) {
-        if (candidateUser.accessToken && window.google?.accounts?.oauth2?.revoke) {
+        if (
+          candidateUser.accessToken &&
+          window.google?.accounts?.oauth2?.revoke
+        ) {
           try {
-            window.google.accounts.oauth2.revoke(candidateUser.accessToken, () => {});
+            window.google.accounts.oauth2.revoke(
+              candidateUser.accessToken,
+              () => {},
+            );
           } catch (_) {}
         }
         state.user = null;
@@ -1180,11 +1391,13 @@
           `🔒 <strong>Acceso denegado</strong><br>` +
             `La cuenta <strong>${escapeHtml(who)}</strong> no tiene permiso para ver la hoja de cálculo <strong>Escapes</strong>.<br>` +
             `Solo quienes tienen acceso compartido en Google Sheets pueden ver los datos.<br>` +
-            `<button type="button" id="switch-account-btn" class="auth-inline-btn">Cambiar de cuenta de Google</button>`
+            `<button type="button" id="switch-account-btn" class="auth-inline-btn">Cambiar de cuenta de Google</button>`,
         );
         const switchBtn = document.getElementById("switch-account-btn");
         if (switchBtn) {
-          switchBtn.addEventListener("click", () => requestGoogleLogin("select_account"));
+          switchBtn.addEventListener("click", () =>
+            requestGoogleLogin("select_account"),
+          );
         }
         return;
       }
@@ -1192,12 +1405,17 @@
       if (err.status === 401) {
         state.user = null;
         clearSessionAndData();
-        setAuthMessage("Tu sesión de Google ha caducado. Vuelve a iniciar sesión para acceder.", "info");
+        setAuthMessage(
+          "Tu sesión de Google ha caducado. Vuelve a iniciar sesión para acceder.",
+          "info",
+        );
         return;
       }
 
       clearSessionAndData();
-      setAuthMessage(`No se pudo verificar el acceso a la hoja de cálculo: ${escapeHtml(msg)}`);
+      setAuthMessage(
+        `No se pudo verificar el acceso a la hoja de cálculo: ${escapeHtml(msg)}`,
+      );
     }
   }
 
@@ -1227,22 +1445,33 @@
   }
 
   function updateSidebarBadges() {
-    const uniqueCities = new Set(state.visitedRooms.map((r) => normalizeKey(r.ciudad))).size;
-    document.getElementById("nav-badge-visited").textContent = String(state.visitedRooms.length);
-    document.getElementById("nav-badge-pending").textContent = String(state.pendingRooms.length);
+    const uniqueCities = new Set(
+      state.visitedRooms.map((r) => normalizeKey(r.ciudad)),
+    ).size;
+    document.getElementById("nav-badge-visited").textContent = String(
+      state.visitedRooms.length,
+    );
+    document.getElementById("nav-badge-pending").textContent = String(
+      state.pendingRooms.length,
+    );
     document.getElementById("nav-badge-map").textContent = `${uniqueCities}`;
-    document.getElementById("nav-badge-team").textContent = String(MEMBERS.length);
+    document.getElementById("nav-badge-team").textContent = String(
+      MEMBERS.length,
+    );
 
     const personalBadge = document.getElementById("nav-badge-personal");
     if (personalBadge) {
       if (state.currentMember) {
         const myRooms = state.visitedRooms.filter((r) =>
-          r.deNosotros.includes(state.currentMember.key)
+          r.deNosotros.includes(state.currentMember.key),
         );
         const unrated = myRooms.filter(
-          (r) => !r.ratings[state.currentMember.key]?.hasAnyScore
+          (r) => !r.ratings[state.currentMember.key]?.hasAnyScore,
         ).length;
-        personalBadge.textContent = unrated > 0 ? `${state.currentMember.name} · ${unrated}` : state.currentMember.name;
+        personalBadge.textContent =
+          unrated > 0
+            ? `${state.currentMember.name} · ${unrated}`
+            : state.currentMember.name;
       } else {
         personalBadge.textContent = "Personal";
       }
@@ -1294,10 +1523,16 @@
     const exOk = state.visitedRooms.filter((r) => r.exito === "S").length;
     const exFail = state.visitedRooms.filter((r) => r.exito === "N").length;
     const successPct =
-      exOk + exFail > 0 ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",") : "—";
+      exOk + exFail > 0
+        ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",")
+        : "—";
 
-    const uniqueCities = new Set(state.visitedRooms.map((r) => normalizeKey(r.ciudad))).size;
-    const uniqueProvs = new Set(state.visitedRooms.map((r) => normalizeKey(r.provincia))).size;
+    const uniqueCities = new Set(
+      state.visitedRooms.map((r) => normalizeKey(r.ciudad)),
+    ).size;
+    const uniqueProvs = new Set(
+      state.visitedRooms.map((r) => normalizeKey(r.provincia)),
+    ).size;
 
     const upcomingEl = document.getElementById("upcoming-pill");
     if (state.upcomingRooms.length > 0) {
@@ -1367,7 +1602,7 @@
         (a, b) =>
           (b.media.media ?? 0) - (a.media.media ?? 0) ||
           (b.media.general ?? 0) - (a.media.general ?? 0) ||
-          a.id - b.id
+          a.id - b.id,
       )
       .slice(0, 3);
 
@@ -1401,7 +1636,9 @@
       : `<p class="panel-sub">No hay salas valoradas todavía.</p>`;
 
     podiumEl.querySelectorAll("[data-room-id]").forEach((btn) => {
-      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+      btn.addEventListener("click", () =>
+        openRoomModal(Number(btn.getAttribute("data-room-id"))),
+      );
     });
 
     // 2. Actividad reciente (últimas 5 salas visitadas)
@@ -1414,8 +1651,8 @@
               r.exito === "S"
                 ? `<span class="status-ok">✓ Superada</span>`
                 : r.exito === "N"
-                ? `<span class="status-fail">✕ No superada</span>`
-                : "";
+                  ? `<span class="status-fail">✕ No superada</span>`
+                  : "";
 
             return `
               <button type="button" class="dash-row" data-room-id="${r.id}">
@@ -1438,18 +1675,24 @@
       : `<p class="panel-sub">Sin salas visitadas registradas.</p>`;
 
     recentEl.querySelectorAll("[data-room-id]").forEach((btn) => {
-      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+      btn.addEventListener("click", () =>
+        openRoomModal(Number(btn.getAttribute("data-room-id"))),
+      );
     });
 
     // 3. Resumen compacto del equipo
     const totalVis = state.visitedRooms.length || 1;
     const teamSumEl = document.getElementById("dashboard-team-summary");
     teamSumEl.innerHTML = MEMBERS.map((m) => {
-      const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
+      const rooms = state.visitedRooms.filter((r) =>
+        r.deNosotros.includes(m.key),
+      );
       const count = rooms.length;
       const pct = Math.round((count / totalVis) * 100);
       const rated = rooms.filter((r) => r.media.media !== null);
-      const avg = rated.length ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length : null;
+      const avg = rated.length
+        ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length
+        : null;
 
       return `
         <button type="button" class="dash-member-btn" data-dash-member="${m.key}">
@@ -1498,7 +1741,8 @@
 
     const compStats = {};
     state.visitedRooms.forEach((r) => {
-      if (!r.empresa || r.empresa === "Sin empresa" || r.media.media === null) return;
+      if (!r.empresa || r.empresa === "Sin empresa" || r.media.media === null)
+        return;
       const key = normalizeKey(r.empresa);
       if (!compStats[key]) compStats[key] = { name: r.empresa, scores: [] };
       compStats[key].scores.push(r.media.media);
@@ -1507,7 +1751,7 @@
       .filter((c) => c.scores.length >= 2)
       .map((c) => ({
         name: c.name,
-        avg: c.scores.reduce((s, v) => s + v, 0) / c.scores.length
+        avg: c.scores.reduce((s, v) => s + v, 0) / c.scores.length,
       }))
       .sort((a, b) => b.avg - a.avg)[0];
 
@@ -1524,10 +1768,10 @@
     const upcomingBoxHtml = state.upcomingRooms.length
       ? `<div class="pulse-upcoming-box">
           <strong>📅 Próxima cita confirmada:</strong> ${escapeHtml(state.upcomingRooms[0].sala)} · ${escapeHtml(
-          state.upcomingRooms[0].empresa
-        )} (${escapeHtml(state.upcomingRooms[0].ciudad)}) el <strong>${escapeHtml(
-          state.upcomingRooms[0].fechaDisplay
-        )}</strong>
+            state.upcomingRooms[0].empresa,
+          )} (${escapeHtml(state.upcomingRooms[0].ciudad)}) el <strong>${escapeHtml(
+            state.upcomingRooms[0].fechaDisplay,
+          )}</strong>
         </div>`
       : "";
 
@@ -1562,8 +1806,8 @@
             .map(
               ([prov, cnt]) =>
                 `<button type="button" class="prov-chip" data-dash-prov="${escapeHtml(prov)}">${escapeHtml(
-                  prov
-                )} <b>${cnt}</b></button>`
+                  prov,
+                )} <b>${cnt}</b></button>`,
             )
             .join("")}
         </div>
@@ -1630,23 +1874,30 @@
     unmatchedCard.hidden = true;
     memberContent.hidden = false;
 
-    const myVisited = state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+    const myVisited = state.visitedRooms.filter((r) =>
+      r.deNosotros.includes(member.key),
+    );
     const myRated = myVisited.filter((r) => r.ratings[member.key]?.hasMedia);
-    const myAnyRated = myVisited.filter((r) => r.ratings[member.key]?.hasAnyScore);
+    const myAnyRated = myVisited.filter(
+      (r) => r.ratings[member.key]?.hasAnyScore,
+    );
     const pendingRateCount = myVisited.length - myAnyRated.length;
 
     const myAvg = myRated.length
-      ? myRated.reduce((acc, r) => acc + r.ratings[member.key].media, 0) / myRated.length
+      ? myRated.reduce((acc, r) => acc + r.ratings[member.key].media, 0) /
+        myRated.length
       : null;
 
     // Comparativa de exigencia/generosidad frente a la media del grupo en esas mismas salas
-    const sharedComparison = myRated.filter((r) => r.media.media !== null && r.media.ratersCount >= 2);
+    const sharedComparison = myRated.filter(
+      (r) => r.media.media !== null && r.media.ratersCount >= 2,
+    );
     let diffText = "Media sobre 6 criterios (sin Dificultad)";
     if (sharedComparison.length > 0) {
       const delta =
         sharedComparison.reduce(
           (acc, r) => acc + (r.ratings[member.key].media - r.media.media),
-          0
+          0,
         ) / sharedComparison.length;
       const sign = delta > 0.01 ? "+" : "";
       diffText = `${sign}${fmtScore(delta)} frente a la media grupal (${sharedComparison.length} salas compartidas)`;
@@ -1655,15 +1906,19 @@
     const exOk = myVisited.filter((r) => r.exito === "S").length;
     const exFail = myVisited.filter((r) => r.exito === "N").length;
     const winPct =
-      exOk + exFail > 0 ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",") : "—";
+      exOk + exFail > 0
+        ? ((exOk / (exOk + exFail)) * 100).toFixed(1).replace(".", ",")
+        : "—";
 
     const topMyRoom = myRated
       .slice()
       .sort(
         (a, b) =>
-          (b.ratings[member.key].media ?? 0) - (a.ratings[member.key].media ?? 0) ||
-          (b.ratings[member.key].general ?? 0) - (a.ratings[member.key].general ?? 0) ||
-          a.id - b.id
+          (b.ratings[member.key].media ?? 0) -
+            (a.ratings[member.key].media ?? 0) ||
+          (b.ratings[member.key].general ?? 0) -
+            (a.ratings[member.key].general ?? 0) ||
+          a.id - b.id,
       )[0];
 
     const attendancePct = state.visitedRooms.length
@@ -1736,12 +1991,18 @@
         const target = btn.getAttribute("data-personal-jump");
         if (target === "rooms-unrated") {
           setPersonalStatusFilter("UNRATED");
-          document.getElementById("personal-rooms-anchor")?.scrollIntoView({ behavior: "smooth" });
+          document
+            .getElementById("personal-rooms-anchor")
+            ?.scrollIntoView({ behavior: "smooth" });
         } else if (target === "rooms-all") {
           setPersonalStatusFilter("ALL");
-          document.getElementById("personal-rooms-anchor")?.scrollIntoView({ behavior: "smooth" });
+          document
+            .getElementById("personal-rooms-anchor")
+            ?.scrollIntoView({ behavior: "smooth" });
         } else if (target === "stats") {
-          document.getElementById("personal-stats-anchor")?.scrollIntoView({ behavior: "smooth" });
+          document
+            .getElementById("personal-stats-anchor")
+            ?.scrollIntoView({ behavior: "smooth" });
         }
       });
     });
@@ -1760,11 +2021,14 @@
     state.personalFilter.status = statusVal;
     state.personalFilter.page = 1;
     document.querySelectorAll("[data-personal-status]").forEach((b) => {
-      b.classList.toggle("active", b.getAttribute("data-personal-status") === statusVal);
+      b.classList.toggle(
+        "active",
+        b.getAttribute("data-personal-status") === statusVal,
+      );
     });
     if (state.currentMember) {
       const myVisited = state.visitedRooms.filter((r) =>
-        r.deNosotros.includes(state.currentMember.key)
+        r.deNosotros.includes(state.currentMember.key),
       );
       renderPersonalRoomsTable(myVisited);
     }
@@ -1775,9 +2039,9 @@
     if (!yearSelect) return;
     const currentVal = state.personalFilter.year;
 
-    const years = Array.from(new Set(myVisited.filter((r) => r.year).map((r) => r.year))).sort(
-      (a, b) => b - a
-    );
+    const years = Array.from(
+      new Set(myVisited.filter((r) => r.year).map((r) => r.year)),
+    ).sort((a, b) => b - a);
     const hasUndated = myVisited.some((r) => r.undated);
 
     yearSelect.innerHTML =
@@ -1799,11 +2063,14 @@
     if (!member) return;
 
     const list =
-      myVisited || state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+      myVisited ||
+      state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
     const { status, search, year, pageSize } = state.personalFilter;
     const q = normalizeKey(search);
 
-    const unratedTotal = list.filter((r) => !r.ratings[member.key]?.hasAnyScore).length;
+    const unratedTotal = list.filter(
+      (r) => !r.ratings[member.key]?.hasAnyScore,
+    ).length;
     const ratedTotal = list.length - unratedTotal;
 
     document.querySelectorAll("[data-personal-status]").forEach((btn) => {
@@ -1818,20 +2085,26 @@
       if (status === "UNRATED" && hasScore) return false;
       if (status === "RATED" && !hasScore) return false;
       if (year === "UNDATED" && !r.undated) return false;
-      if (year !== "ALL" && year !== "UNDATED" && String(r.year) !== year) return false;
+      if (year !== "ALL" && year !== "UNDATED" && String(r.year) !== year)
+        return false;
       if (q) {
-        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.tematica}`);
+        const hay = normalizeKey(
+          `${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.tematica}`,
+        );
         if (!hay.includes(q)) return false;
       }
       return true;
     });
 
-    document.getElementById("personal-rooms-count-pill").textContent = String(filtered.length);
+    document.getElementById("personal-rooms-count-pill").textContent = String(
+      filtered.length,
+    );
     const hasFilter = status !== "ALL" || Boolean(q) || year !== "ALL";
     document.getElementById("personal-reset-btn").hidden = !hasFilter;
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-    if (state.personalFilter.page > totalPages) state.personalFilter.page = totalPages;
+    if (state.personalFilter.page > totalPages)
+      state.personalFilter.page = totalPages;
     const page = state.personalFilter.page;
 
     const start = (page - 1) * pageSize;
@@ -1847,11 +2120,11 @@
           const myScoreHtml =
             myR?.media !== null
               ? `<span class="score-pill" style="border-color:${member.color}66;color:${member.color};background:${member.bg}">★ ${fmtScore(
-                  myR.media
+                  myR.media,
                 )}</span>`
               : myR?.hasAnyScore
-              ? `<span class="unrated-pill">Solo Dif: ${fmtScore(myR.dims[0])}</span>`
-              : `<span class="unrated-pill">Sin valorar</span>`;
+                ? `<span class="unrated-pill">Solo Dif: ${fmtScore(myR.dims[0])}</span>`
+                : `<span class="unrated-pill">Sin valorar</span>`;
 
           const grpScoreHtml =
             r.media.media !== null
@@ -1879,8 +2152,8 @@
                       ${cat?.url ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="table-room-link" onclick="event.stopPropagation()" title="Web oficial">↗</a>` : ""}
                     </div>
                     <div class="room-sub-company">${escapeHtml(r.empresa)} · <span class="theme-tag ${themeClass(
-            r.tematica
-          )}" style="padding:0.1rem 0.4rem;font-size:0.68rem">${escapeHtml(r.tematica)}</span></div>
+                      r.tematica,
+                    )}" style="padding:0.1rem 0.4rem;font-size:0.68rem">${escapeHtml(r.tematica)}</span></div>
                   </div>
                 </div>
               </td>
@@ -1902,7 +2175,9 @@
       });
 
       tbody.querySelectorAll("tr[data-room-id]").forEach((tr) => {
-        tr.addEventListener("click", () => openRoomModal(Number(tr.getAttribute("data-room-id"))));
+        tr.addEventListener("click", () =>
+          openRoomModal(Number(tr.getAttribute("data-room-id"))),
+        );
       });
     }
 
@@ -1914,19 +2189,22 @@
     for (let p = 1; p <= totalPages; p++) {
       if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
         pageBtns.push(
-          `<button type="button" class="page-btn ${p === page ? "active" : ""}" data-p-page="${p}">${p}</button>`
+          `<button type="button" class="page-btn ${p === page ? "active" : ""}" data-p-page="${p}">${p}</button>`,
         );
       } else if (
-        pageBtns[pageBtns.length - 1] !== `<span style="color:var(--text-muted);padding:0 4px">…</span>`
+        pageBtns[pageBtns.length - 1] !==
+        `<span style="color:var(--text-muted);padding:0 4px">…</span>`
       ) {
-        pageBtns.push(`<span style="color:var(--text-muted);padding:0 4px">…</span>`);
+        pageBtns.push(
+          `<span style="color:var(--text-muted);padding:0 4px">…</span>`,
+        );
       }
     }
 
     pagBar.innerHTML = `
       <div class="page-info">Mostrando <strong>${fromNum}–${toNum}</strong> de <strong>${filtered.length}</strong> salas jugadas por ${escapeHtml(
-      member.name
-    )}</div>
+        member.name,
+      )}</div>
       <div class="page-controls">
         <button type="button" class="page-btn" data-p-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>‹ Ant.</button>
         ${pageBtns.join("")}
@@ -1954,9 +2232,11 @@
       .slice()
       .sort(
         (a, b) =>
-          (b.ratings[member.key].media ?? 0) - (a.ratings[member.key].media ?? 0) ||
-          (b.ratings[member.key].general ?? 0) - (a.ratings[member.key].general ?? 0) ||
-          a.id - b.id
+          (b.ratings[member.key].media ?? 0) -
+            (a.ratings[member.key].media ?? 0) ||
+          (b.ratings[member.key].general ?? 0) -
+            (a.ratings[member.key].general ?? 0) ||
+          a.id - b.id,
       )
       .slice(0, 5);
 
@@ -1964,7 +2244,14 @@
     topEl.innerHTML = top5.length
       ? top5
           .map((r, idx) => {
-            const medal = idx === 0 ? "🥇 #1" : idx === 1 ? "🥈 #2" : idx === 2 ? "🥉 #3" : `#${idx + 1}`;
+            const medal =
+              idx === 0
+                ? "🥇 #1"
+                : idx === 1
+                  ? "🥈 #2"
+                  : idx === 2
+                    ? "🥉 #3"
+                    : `#${idx + 1}`;
             const poster = getPosterUrl(r.sala);
             const thumbStyle = poster
               ? `background-image:url('${poster}')`
@@ -1981,8 +2268,8 @@
                 </div>
                 <div class="dash-row-right">
                   <span class="score-pill" style="border-color:${member.color}66;color:${member.color};background:${member.bg}">Mi nota: ★ ${fmtScore(
-              r.ratings[member.key].media
-            )}</span>
+                    r.ratings[member.key].media,
+                  )}</span>
                   <span class="dash-date-tag">Grupo: ★ ${fmtScore(r.media.media)}</span>
                 </div>
               </button>
@@ -1992,14 +2279,18 @@
       : `<p class="panel-sub">Aún no has valorado ninguna sala. Usa el botón <strong>✍️ Valorar</strong> en tu tabla superior para estrenar tu ranking personal.</p>`;
 
     topEl.querySelectorAll("[data-room-id]").forEach((btn) => {
-      btn.addEventListener("click", () => openRoomModal(Number(btn.getAttribute("data-room-id"))));
+      btn.addEventListener("click", () =>
+        openRoomModal(Number(btn.getAttribute("data-room-id"))),
+      );
     });
 
     // 2. Compañeros más frecuentes y temáticas favoritas del miembro
     const companionCounts = {};
     MEMBERS.forEach((other) => {
       if (other.key === member.key) return;
-      const cnt = myVisited.filter((r) => r.deNosotros.includes(other.key)).length;
+      const cnt = myVisited.filter((r) =>
+        r.deNosotros.includes(other.key),
+      ).length;
       if (cnt > 0) companionCounts[other.key] = { member: other, count: cnt };
     });
     const topCompanions = Object.values(companionCounts)
@@ -2009,10 +2300,12 @@
     const themeStats = {};
     myVisited.forEach((r) => {
       if (!r.tematica || r.tematica === "Sin especificar") return;
-      if (!themeStats[r.tematica]) themeStats[r.tematica] = { count: 0, myScores: [] };
+      if (!themeStats[r.tematica])
+        themeStats[r.tematica] = { count: 0, myScores: [] };
       themeStats[r.tematica].count += 1;
       const sc = r.ratings[member.key]?.media;
-      if (sc !== null && sc !== undefined) themeStats[r.tematica].myScores.push(sc);
+      if (sc !== null && sc !== undefined)
+        themeStats[r.tematica].myScores.push(sc);
     });
     const topThemes = Object.entries(themeStats)
       .sort((a, b) => b[1].count - a[1].count)
@@ -2033,8 +2326,8 @@
                   <div class="stat-bar-row">
                     <div class="stat-bar-head">
                       <span><span class="team-dot ${c.key === "+" ? "dot-plus" : `dot-${c.key}`}" style="margin-right:6px">${
-                  c.key
-                }</span><strong>${escapeHtml(c.name)}</strong></span>
+                        c.key
+                      }</span><strong>${escapeHtml(c.name)}</strong></span>
                       <span style="font-family:var(--font-mono);font-size:0.8rem">${count} salas juntos (${pct}%)</span>
                     </div>
                     <div class="stat-bar-track">
@@ -2056,8 +2349,8 @@
             <div class="stat-bar-row">
               <div class="stat-bar-head">
                 <span><strong>${escapeHtml(tName)}</strong> <span style="color:var(--text-secondary);font-size:0.78rem">(${
-            info.count
-          } salas)</span></span>
+                  info.count
+                } salas)</span></span>
                 <span class="score-pill">${avg !== null ? `Mi media: ★ ${fmtScore(avg)}` : `${info.count} jugadas`}</span>
               </div>
               <div class="stat-bar-track">
@@ -2074,24 +2367,38 @@
     const member = state.currentMember;
     if (!member) return;
 
-    const myVisited = state.visitedRooms.filter((r) => r.deNosotros.includes(member.key));
+    const myVisited = state.visitedRooms.filter((r) =>
+      r.deNosotros.includes(member.key),
+    );
 
     // 1. Radar Personal vs Media del Grupo en mis salas
     const myDimAvgs = DIMENSIONS.map((_, i) => {
-      const vals = myVisited.map((r) => r.ratings[member.key]?.dims[i] ?? null).filter((v) => v !== null);
-      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+      const vals = myVisited
+        .map((r) => r.ratings[member.key]?.dims[i] ?? null)
+        .filter((v) => v !== null);
+      return vals.length
+        ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2))
+        : 0;
     });
 
     const grpDimAvgsOnMyRooms = DIMENSIONS.map((_, i) => {
-      const vals = myVisited.map((r) => r.media.dims[i]).filter((v) => v !== null);
-      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+      const vals = myVisited
+        .map((r) => r.media.dims[i])
+        .filter((v) => v !== null);
+      return vals.length
+        ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2))
+        : 0;
     });
 
     const pRadarCanvas = document.getElementById("personalRadarChart");
     if (pRadarCanvas) {
       if (state.charts.personalRadar) state.charts.personalRadar.destroy();
-      const nonZeroVals = [...myDimAvgs, ...grpDimAvgsOnMyRooms].filter((v) => v > 0);
-      const minScale = nonZeroVals.length ? Math.max(0, Math.floor(Math.min(...nonZeroVals) - 0.5)) : 1;
+      const nonZeroVals = [...myDimAvgs, ...grpDimAvgsOnMyRooms].filter(
+        (v) => v > 0,
+      );
+      const minScale = nonZeroVals.length
+        ? Math.max(0, Math.floor(Math.min(...nonZeroVals) - 0.5))
+        : 1;
 
       state.charts.personalRadar = new Chart(pRadarCanvas.getContext("2d"), {
         type: "radar",
@@ -2104,7 +2411,7 @@
               borderColor: member.color,
               backgroundColor: member.bg,
               borderWidth: 2.3,
-              pointRadius: 3.5
+              pointRadius: 3.5,
             },
             {
               label: "Media Grupo (en mis salas)",
@@ -2112,9 +2419,9 @@
               borderColor: "#f5b038",
               backgroundColor: "rgba(245, 176, 56, 0.14)",
               borderWidth: 2,
-              pointRadius: 3
-            }
-          ]
+              pointRadius: 3,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -2123,16 +2430,23 @@
             r: {
               min: minScale,
               max: 5,
-              ticks: { stepSize: 0.5, color: "#64748b", backdropColor: "transparent" },
+              ticks: {
+                stepSize: 0.5,
+                color: "#64748b",
+                backdropColor: "transparent",
+              },
               grid: { color: "rgba(148,163,184,0.14)" },
               angleLines: { color: "rgba(148,163,184,0.14)" },
-              pointLabels: { color: "#e2e8f0", font: { size: 11, weight: "600" } }
-            }
+              pointLabels: {
+                color: "#e2e8f0",
+                font: { size: 11, weight: "600" },
+              },
+            },
           },
           plugins: {
-            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
-          }
-        }
+            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } },
+          },
+        },
       });
     }
 
@@ -2143,7 +2457,8 @@
       if (!byYear[r.year]) byYear[r.year] = { count: 0, myScores: [] };
       byYear[r.year].count += 1;
       const mySc = r.ratings[member.key]?.media;
-      if (mySc !== null && mySc !== undefined) byYear[r.year].myScores.push(mySc);
+      if (mySc !== null && mySc !== undefined)
+        byYear[r.year].myScores.push(mySc);
     });
 
     const years = Object.keys(byYear)
@@ -2160,7 +2475,9 @@
     const counts = sortedYears.map((y) => byYear[y].count);
     const avgs = sortedYears.map((y) => {
       const arr = byYear[y].myScores;
-      return arr.length ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)) : null;
+      return arr.length
+        ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2))
+        : null;
     });
 
     const pYearCanvas = document.getElementById("personalYearChart");
@@ -2178,7 +2495,7 @@
               backgroundColor: member.color + "b3",
               borderRadius: 7,
               maxBarThickness: 38,
-              yAxisID: "y"
+              yAxisID: "y",
             },
             {
               type: "line",
@@ -2190,36 +2507,39 @@
               pointRadius: 4,
               tension: 0.3,
               spanGaps: true,
-              yAxisID: "y1"
-            }
-          ]
+              yAxisID: "y1",
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
+            legend: { labels: { color: "#cbd5e1", boxWidth: 12 } },
           },
           scales: {
             x: {
-              ticks: { color: "#94a3b8", font: { family: "'JetBrains Mono', monospace" } },
-              grid: { display: false }
+              ticks: {
+                color: "#94a3b8",
+                font: { family: "'JetBrains Mono', monospace" },
+              },
+              grid: { display: false },
             },
             y: {
               beginAtZero: true,
               suggestedMax: Math.max(...counts, 4) + 2,
               ticks: { color: "#94a3b8", precision: 0 },
-              grid: { color: "rgba(148,163,184,0.1)" }
+              grid: { color: "rgba(148,163,184,0.1)" },
             },
             y1: {
               position: "right",
               min: 1,
               max: 5,
               ticks: { color: "#ffd166" },
-              grid: { drawOnChartArea: false }
-            }
-          }
-        }
+              grid: { drawOnChartArea: false },
+            },
+          },
+        },
       });
     }
   }
@@ -2238,8 +2558,13 @@
 
     const roomModal = document.getElementById("room-modal");
     if (roomModal) roomModal.hidden = true;
-    const existing = room.ratings[member.key] || { dims: DIMENSIONS.map(() => null), hasAnyScore: false };
-    const draftDims = existing.dims.map((v) => (v !== null && Number.isFinite(v) ? v : null));
+    const existing = room.ratings[member.key] || {
+      dims: DIMENSIONS.map(() => null),
+      hasAnyScore: false,
+    };
+    const draftDims = existing.dims.map((v) =>
+      v !== null && Number.isFinite(v) ? v : null,
+    );
 
     const modal = document.getElementById("rating-modal");
     const body = document.getElementById("rating-modal-body");
@@ -2250,9 +2575,10 @@
       const inputStr = curVal !== null ? String(curVal).replace(".", ",") : "";
 
       const chipsHtml = QUICK_SCORES.map((sc) => {
-        const isActive = curVal !== null && Math.abs(curVal - sc) < 0.001 ? "active" : "";
+        const isActive =
+          curVal !== null && Math.abs(curVal - sc) < 0.001 ? "active" : "";
         return `<button type="button" class="rating-chip ${isActive}" data-dim-idx="${idx}" data-chip-val="${sc}">${String(
-          sc
+          sc,
         ).replace(".", ",")}</button>`;
       }).join("");
 
@@ -2291,13 +2617,13 @@
 
     body.innerHTML = `
       <span class="section-kicker" style="color:${member.color}">VALORACIÓN DE ${escapeHtml(
-      member.name.toUpperCase()
-    )} · HOJA «${escapeHtml(member.sheet)}»</span>
+        member.name.toUpperCase(),
+      )} · HOJA «${escapeHtml(member.sheet)}»</span>
       <h3 id="rating-modal-title" style="font-size:1.45rem;margin-bottom:0.25rem">${escapeHtml(room.sala)}</h3>
       <div style="font-size:0.84rem;color:var(--text-secondary)">
         ${escapeHtml(room.empresa)} · 📍 ${escapeHtml(room.ciudad)} (${escapeHtml(room.provincia)}) · 🗓️ ${escapeHtml(
-      room.fechaDisplay
-    )}
+          room.fechaDisplay,
+        )}
       </div>
 
       <div class="rating-live-summary">
@@ -2339,10 +2665,15 @@
     function syncRowUi(idx) {
       const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
       const val = parseScore(inp ? inp.value : "");
-      body.querySelectorAll(`.rating-chip[data-dim-idx="${idx}"]`).forEach((chip) => {
-        const cVal = Number(chip.getAttribute("data-chip-val"));
-        chip.classList.toggle("active", val !== null && Math.abs(val - cVal) < 0.001);
-      });
+      body
+        .querySelectorAll(`.rating-chip[data-dim-idx="${idx}"]`)
+        .forEach((chip) => {
+          const cVal = Number(chip.getAttribute("data-chip-val"));
+          chip.classList.toggle(
+            "active",
+            val !== null && Math.abs(val - cVal) < 0.001,
+          );
+        });
       updateLiveMedia();
     }
 
@@ -2380,7 +2711,9 @@
       });
     });
 
-    document.getElementById("rating-cancel-btn")?.addEventListener("click", closeRatingModal);
+    document
+      .getElementById("rating-cancel-btn")
+      ?.addEventListener("click", closeRatingModal);
 
     const errBox = document.getElementById("rating-form-error");
     const saveBtn = document.getElementById("rating-save-btn");
@@ -2404,12 +2737,12 @@
         showSyncBanner(
           isDelete
             ? `🗑️ Valoración eliminada de la hoja <strong>${escapeHtml(member.sheet)}</strong> para «${escapeHtml(
-                room.sala
+                room.sala,
               )}».`
             : `✓ Valoración de <strong>${escapeHtml(room.sala)}</strong> guardada en tu hoja <strong>${escapeHtml(
-                member.sheet
+                member.sheet,
               )}</strong> y estadísticas actualizadas.`,
-          "success"
+          "success",
         );
       } catch (err) {
         let friendly = err.message || "Error al guardar en Google Sheets.";
@@ -2417,7 +2750,8 @@
           friendly =
             "Tu cuenta tiene acceso de solo lectura en la hoja «Escapes» o falta permiso de escritura. Asegúrate de tener rol de Editor en Google Sheets.";
         } else if (err.status === 401) {
-          friendly = "Tu sesión OAuth ha caducado. Pulsa «Salir» y vuelve a iniciar sesión con Google.";
+          friendly =
+            "Tu sesión OAuth ha caducado. Pulsa «Salir» y vuelve a iniciar sesión con Google.";
         }
         errBox.textContent = friendly;
         errBox.hidden = false;
@@ -2431,46 +2765,53 @@
       }
     }
 
-    document.getElementById("personal-rating-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      errBox.hidden = true;
+    document
+      .getElementById("personal-rating-form")
+      ?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errBox.hidden = true;
 
-      const rawStrings = DIMENSIONS.map((_, idx) => {
-        const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
-        return inp ? inp.value.trim() : "";
-      });
+        const rawStrings = DIMENSIONS.map((_, idx) => {
+          const inp = body.querySelector(`input[data-dim-input="${idx}"]`);
+          return inp ? inp.value.trim() : "";
+        });
 
-      const parsedDims = [];
-      for (let i = 0; i < DIMENSIONS.length; i++) {
-        if (!rawStrings[i]) {
-          parsedDims.push(null);
-          continue;
+        const parsedDims = [];
+        for (let i = 0; i < DIMENSIONS.length; i++) {
+          if (!rawStrings[i]) {
+            parsedDims.push(null);
+            continue;
+          }
+          const n = parseScore(rawStrings[i]);
+          if (n === null || n < 0 || n > 5) {
+            errBox.textContent = `Revisa «${DIMENSIONS[i]}»: introduce un número entre 0 y 5 (ej. 4 o 4,5).`;
+            errBox.hidden = false;
+            return;
+          }
+          parsedDims.push(n);
         }
-        const n = parseScore(rawStrings[i]);
-        if (n === null || n < 0 || n > 5) {
-          errBox.textContent = `Revisa «${DIMENSIONS[i]}»: introduce un número entre 0 y 5 (ej. 4 o 4,5).`;
+
+        if (parsedDims.every((v) => v === null)) {
+          errBox.textContent =
+            "Introduce al menos una puntuación entre 0 y 5 antes de guardar (o usa «Borrar mi valoración»).";
           errBox.hidden = false;
           return;
         }
-        parsedDims.push(n);
-      }
 
-      if (parsedDims.every((v) => v === null)) {
-        errBox.textContent =
-          "Introduce al menos una puntuación entre 0 y 5 antes de guardar (o usa «Borrar mi valoración»).";
-        errBox.hidden = false;
-        return;
-      }
-
-      await executeSave(parsedDims, false);
-    });
+        await executeSave(parsedDims, false);
+      });
 
     if (delBtn) {
       delBtn.addEventListener("click", async () => {
-        if (!window.confirm(`¿Seguro que quieres borrar tu valoración de «${room.sala}»?`)) return;
+        if (
+          !window.confirm(
+            `¿Seguro que quieres borrar tu valoración de «${room.sala}»?`,
+          )
+        )
+          return;
         await executeSave(
           DIMENSIONS.map(() => null),
-          true
+          true,
         );
       });
     }
@@ -2513,7 +2854,7 @@
         <div class="member-name-label">Total registradas</div>
         <div class="member-progress-track">
           <div class="member-progress-bar" style="width:${Math.round(
-            (state.visitedRooms.length / Math.max(totalReg, 1)) * 100
+            (state.visitedRooms.length / Math.max(totalReg, 1)) * 100,
           )}%;background:var(--gold)"></div>
         </div>
         <div class="member-meta">
@@ -2524,11 +2865,15 @@
     `;
 
     const memberCardsHtml = MEMBERS.map((m) => {
-      const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
+      const rooms = state.visitedRooms.filter((r) =>
+        r.deNosotros.includes(m.key),
+      );
       const count = rooms.length;
       const pct = ((count / totalVis) * 100).toFixed(1).replace(".", ",");
       const rated = rooms.filter((r) => r.media.media !== null);
-      const avg = rated.length ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length : null;
+      const avg = rated.length
+        ? rated.reduce((s, r) => s + r.media.media, 0) / rated.length
+        : null;
 
       const isCore = CORE_MEMBERS.some((cm) => cm.key === m.key);
       const ownRatedCount = isCore
@@ -2541,7 +2886,8 @@
           themeCounts[r.tematica] = (themeCounts[r.tematica] || 0) + 1;
         }
       });
-      const favTheme = Object.entries(themeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      const favTheme =
+        Object.entries(themeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
 
       const isActive = activeMember === m.key ? "active-filter" : "";
 
@@ -2586,7 +2932,14 @@
       .slice(0, 7);
     const maxSquad = topSquads[0]?.[1] || 1;
 
-    const nameMap = { S: "Sara", M: "Miguel", R: "Rafa", A: "Antonio", J: "Joan", "+": "Invitados" };
+    const nameMap = {
+      S: "Sara",
+      M: "Miguel",
+      R: "Rafa",
+      A: "Antonio",
+      J: "Joan",
+      "+": "Invitados",
+    };
     document.getElementById("squads-list").innerHTML = topSquads
       .map(([code, cnt]) => {
         const readable = code
@@ -2597,8 +2950,8 @@
           <div class="stat-bar-row">
             <div class="stat-bar-head">
               <span>${renderTeamDotsHtml(code)} <span style="color:var(--text-secondary);font-size:0.8rem;margin-left:6px">${escapeHtml(
-          readable
-        )}</span></span>
+                readable,
+              )}</span></span>
               <strong style="font-family:var(--font-mono)">${cnt} salas</strong>
             </div>
             <div class="stat-bar-track">
@@ -2611,19 +2964,28 @@
 
     const insightsEl = document.getElementById("team-insights-list");
     insightsEl.innerHTML = MEMBERS.map((m) => {
-      const rooms = state.visitedRooms.filter((r) => r.deNosotros.includes(m.key));
+      const rooms = state.visitedRooms.filter((r) =>
+        r.deNosotros.includes(m.key),
+      );
       const exOk = rooms.filter((r) => r.exito === "S").length;
       const exFail = rooms.filter((r) => r.exito === "N").length;
       const totalEval = exOk + exFail;
       const winPct = totalEval > 0 ? Math.round((exOk / totalEval) * 100) : 0;
-      const winLabel = totalEval > 0 ? `${winPct}% éxito (${exOk}/${totalEval})` : "Sin registro";
+      const winLabel =
+        totalEval > 0
+          ? `${winPct}% éxito (${exOk}/${totalEval})`
+          : "Sin registro";
 
       const years = {};
       rooms.forEach((r) => {
         if (r.year && !r.undated) years[r.year] = (years[r.year] || 0) + 1;
       });
-      const bestYearEntry = Object.entries(years).sort((a, b) => b[1] - a[1])[0];
-      const bestYearTxt = bestYearEntry ? `Récord en ${bestYearEntry[0]} (${bestYearEntry[1]})` : "—";
+      const bestYearEntry = Object.entries(years).sort(
+        (a, b) => b[1] - a[1],
+      )[0];
+      const bestYearTxt = bestYearEntry
+        ? `Récord en ${bestYearEntry[0]} (${bestYearEntry[1]})`
+        : "—";
 
       return `
         <div class="stat-bar-row">
@@ -2650,7 +3012,7 @@
   function getScoreForRankMode(room, mode) {
     if (mode === "general") return room.media.general;
     const memberMatch = CORE_MEMBERS.find(
-      (m) => m.key === mode || normalizeKey(m.name) === normalizeKey(mode)
+      (m) => m.key === mode || normalizeKey(m.name) === normalizeKey(mode),
     );
     if (memberMatch) {
       return room.ratings[memberMatch.key]?.media ?? null;
@@ -2665,7 +3027,7 @@
         room: r,
         primary: getScoreForRankMode(r, mode),
         tie1: r.media.general ?? 0,
-        tie2: r.media.media ?? 0
+        tie2: r.media.media ?? 0,
       }))
       .filter((item) => item.primary !== null);
 
@@ -2674,7 +3036,7 @@
         b.primary - a.primary ||
         b.tie1 - a.tie1 ||
         b.tie2 - a.tie2 ||
-        a.room.id - b.room.id
+        a.room.id - b.room.id,
     );
 
     const top10 = candidates.slice(0, 10);
@@ -2683,7 +3045,7 @@
     if (top10.length === 0) {
       const mName = CORE_MEMBERS.find((m) => m.key === mode)?.name || mode;
       grid.innerHTML = `<div class="panel-card" style="grid-column:1/-1;text-align:center;color:var(--text-secondary)">Todavía no hay salas valoradas para el criterio <strong>${escapeHtml(
-        mName
+        mName,
       )}</strong>.</div>`;
       return;
     }
@@ -2693,7 +3055,14 @@
         const r = entry.room;
         const pos = idx + 1;
         const podiumCls = pos <= 3 ? `rank-podium-${pos}` : "";
-        const medal = pos === 1 ? "🥇 #1" : pos === 2 ? "🥈 #2" : pos === 3 ? "🥉 #3" : `#${pos}`;
+        const medal =
+          pos === 1
+            ? "🥇 #1"
+            : pos === 2
+              ? "🥈 #2"
+              : pos === 3
+                ? "🥉 #3"
+                : `#${pos}`;
         const poster = getPosterUrl(r.sala);
         const bgStyle = poster
           ? `background-image:url('${poster}')`
@@ -2701,8 +3070,8 @@
 
         return `
           <article class="rank-card ${podiumCls}" data-room-id="${r.id}" tabindex="0" role="button" aria-label="Ver detalles de ${escapeHtml(
-          r.sala
-        )}">
+            r.sala,
+          )}">
             <div class="rank-poster" style="${bgStyle}">
               <span class="rank-pos-badge">${medal}</span>
               <span class="rank-score-Float">★ ${fmtScore(entry.primary)}</span>
@@ -2711,8 +3080,8 @@
             <div class="rank-body">
               <div class="rank-title">${escapeHtml(r.sala)}</div>
               <div class="rank-company">${escapeHtml(r.empresa)} · 📍 ${escapeHtml(r.ciudad)} (${escapeHtml(
-          r.provincia
-        )})</div>
+                r.provincia,
+              )})</div>
 
               <div class="rank-mini-bars">
                 <div class="mini-stat"><span>Ambientación</span><strong>${fmtScore(r.media.dims[3])}</strong></div>
@@ -2731,7 +3100,8 @@
       .join("");
 
     grid.querySelectorAll(".rank-card").forEach((card) => {
-      const open = () => openRoomModal(Number(card.getAttribute("data-room-id")));
+      const open = () =>
+        openRoomModal(Number(card.getAttribute("data-room-id")));
       card.addEventListener("click", open);
       card.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -2749,7 +3119,7 @@
   function renderMap() {
     if (!state.map) {
       state.map = L.map("visited-map", {
-        scrollWheelZoom: false
+        scrollWheelZoom: false,
       }).setView([40.35, -3.4], 6);
 
       const cartoTileUrl = CARTO_API_KEY
@@ -2757,15 +3127,16 @@
         : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
       L.tileLayer(cartoTileUrl, {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
         subdomains: "abcd",
-        maxZoom: 19
+        maxZoom: 19,
       }).addTo(state.map);
 
       state.markerCluster = L.markerClusterGroup({
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true,
-        maxClusterRadius: 34
+        maxClusterRadius: 34,
       });
       state.map.addLayer(state.markerCluster);
     }
@@ -2783,7 +3154,7 @@
         html: `<div class="escape-pin"><span>${escapeHtml(scoreTxt)}</span></div>`,
         iconSize: [28, 28],
         iconAnchor: [14, 28],
-        popupAnchor: [0, -26]
+        popupAnchor: [0, -26],
       });
 
       const marker = L.marker(r.coords, { icon });
@@ -2811,13 +3182,15 @@
 
     state.visitedRooms.forEach((r) => {
       const pKey = normalizeKey(r.provincia);
-      if (!provMap[pKey]) provMap[pKey] = { name: r.provincia, count: 0, scores: [] };
+      if (!provMap[pKey])
+        provMap[pKey] = { name: r.provincia, count: 0, scores: [] };
       provMap[pKey].count += 1;
       if (r.media.media !== null) provMap[pKey].scores.push(r.media.media);
 
       if (r.ciudad && r.ciudad !== "—") {
         const cKey = normalizeKey(r.ciudad);
-        if (!cityMap[cKey]) cityMap[cKey] = { name: r.ciudad, prov: r.provincia, count: 0 };
+        if (!cityMap[cKey])
+          cityMap[cKey] = { name: r.ciudad, prov: r.provincia, count: 0 };
         cityMap[cKey].count += 1;
       }
     });
@@ -2829,7 +3202,9 @@
 
     document.getElementById("geo-provinces-list").innerHTML = topProvs
       .map((p) => {
-        const avg = p.scores.length ? p.scores.reduce((s, v) => s + v, 0) / p.scores.length : null;
+        const avg = p.scores.length
+          ? p.scores.reduce((s, v) => s + v, 0) / p.scores.length
+          : null;
         return `
           <div class="stat-bar-row">
             <div class="stat-bar-head">
@@ -2856,15 +3231,15 @@
           <button type="button" class="stat-bar-row stat-bar-row-btn" data-geo-city="${escapeHtml(c.name)}">
             <div class="stat-bar-head">
               <span>📍 <strong>${escapeHtml(c.name)}</strong> <span style="color:var(--text-secondary);font-size:0.78rem">(${escapeHtml(
-          c.prov
-        )})</span></span>
+                c.prov,
+              )})</span></span>
               <strong style="font-family:var(--font-mono);color:var(--cyan)">${c.count} salas →</strong>
             </div>
             <div class="stat-bar-track">
               <div class="stat-bar-fill" style="width:${Math.round((c.count / maxCity) * 100)}%"></div>
             </div>
           </button>
-        `
+        `,
       )
       .join("");
 
@@ -2889,7 +3264,7 @@
     const currentVal = state.visitedFilter.year;
 
     const years = Array.from(
-      new Set(state.visitedRooms.filter((r) => r.year).map((r) => r.year))
+      new Set(state.visitedRooms.filter((r) => r.year).map((r) => r.year)),
     ).sort((a, b) => b - a);
 
     const hasUndated = state.visitedRooms.some((r) => r.undated);
@@ -2909,21 +3284,27 @@
     const filtered = state.visitedRooms.filter((r) => {
       if (member !== "ALL" && !r.deNosotros.includes(member)) return false;
       if (year === "UNDATED" && !r.undated) return false;
-      if (year !== "ALL" && year !== "UNDATED" && String(r.year) !== year) return false;
+      if (year !== "ALL" && year !== "UNDATED" && String(r.year) !== year)
+        return false;
       if (q) {
-        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.tematica}`);
+        const hay = normalizeKey(
+          `${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.tematica}`,
+        );
         if (!hay.includes(q)) return false;
       }
       return true;
     });
 
-    document.getElementById("visited-count-pill").textContent = String(filtered.length);
+    document.getElementById("visited-count-pill").textContent = String(
+      filtered.length,
+    );
 
     const hasActiveFilter = Boolean(q) || member !== "ALL" || year !== "ALL";
     document.getElementById("visited-reset-btn").hidden = !hasActiveFilter;
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-    if (state.visitedFilter.page > totalPages) state.visitedFilter.page = totalPages;
+    if (state.visitedFilter.page > totalPages)
+      state.visitedFilter.page = totalPages;
     const page = state.visitedFilter.page;
 
     const start = (page - 1) * pageSize;
@@ -2939,8 +3320,8 @@
             r.exito === "S"
               ? `<span class="status-ok">✓ Superada${r.tiempoEmpleado ? ` (${escapeHtml(r.tiempoEmpleado)})` : ""}</span>`
               : r.exito === "N"
-              ? `<span class="status-fail">✕ No superada</span>`
-              : `<span class="date-unknown">—</span>`;
+                ? `<span class="status-fail">✕ No superada</span>`
+                : `<span class="date-unknown">—</span>`;
 
           const scoreHtml =
             r.media.media !== null
@@ -2978,7 +3359,9 @@
         .join("");
 
       tbody.querySelectorAll("tr[data-room-id]").forEach((tr) => {
-        tr.addEventListener("click", () => openRoomModal(Number(tr.getAttribute("data-room-id"))));
+        tr.addEventListener("click", () =>
+          openRoomModal(Number(tr.getAttribute("data-room-id"))),
+        );
       });
     }
 
@@ -2990,10 +3373,15 @@
     for (let p = 1; p <= totalPages; p++) {
       if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
         pageBtns.push(
-          `<button type="button" class="page-btn ${p === page ? "active" : ""}" data-page="${p}">${p}</button>`
+          `<button type="button" class="page-btn ${p === page ? "active" : ""}" data-page="${p}">${p}</button>`,
         );
-      } else if (pageBtns[pageBtns.length - 1] !== `<span style="color:var(--text-muted);padding:0 4px">…</span>`) {
-        pageBtns.push(`<span style="color:var(--text-muted);padding:0 4px">…</span>`);
+      } else if (
+        pageBtns[pageBtns.length - 1] !==
+        `<span style="color:var(--text-muted);padding:0 4px">…</span>`
+      ) {
+        pageBtns.push(
+          `<span style="color:var(--text-muted);padding:0 4px">…</span>`,
+        );
       }
     }
 
@@ -3045,8 +3433,8 @@
                 <img src="${imgSrc}" class="upcoming-thumb" alt="${escapeHtml(r.sala)}" loading="lazy">
                 <div style="flex:1;min-width:0">
                   <div style="font-family:var(--font-mono);font-size:0.75rem;color:#6ee7b7">${escapeHtml(r.fechaDisplay)} · ${escapeHtml(
-              r.ciudad
-            )}</div>
+                    r.ciudad,
+                  )}</div>
                   <div style="font-weight:700;color:#fff;margin-top:0.15rem;display:flex;align-items:center;gap:0.35rem">
                     <span>${escapeHtml(r.sala)}</span>
                     ${cat?.url ? `<a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="table-room-link" onclick="event.stopPropagation()" title="Web oficial">↗</a>` : ""}
@@ -3061,11 +3449,13 @@
       </div>
     `;
 
-    wrap.querySelectorAll(".upcoming-mini-card[data-room-id]").forEach((card) => {
-      card.addEventListener("click", () => {
-        openRoomModal(Number(card.getAttribute("data-room-id")));
+    wrap
+      .querySelectorAll(".upcoming-mini-card[data-room-id]")
+      .forEach((card) => {
+        card.addEventListener("click", () => {
+          openRoomModal(Number(card.getAttribute("data-room-id")));
+        });
       });
-    });
   }
 
   function populatePendingFilters() {
@@ -3081,9 +3471,12 @@
     // 1. Faceta de temáticas: si hay una provincia seleccionada, las temáticas disponibles
     // se restringen exclusivamente a las presentes en las salas pendientes de esa provincia.
     let themeFacetRooms = state.pendingRooms;
-    if (state.pendingFilter.province && state.pendingFilter.province !== "ALL") {
+    if (
+      state.pendingFilter.province &&
+      state.pendingFilter.province !== "ALL"
+    ) {
       themeFacetRooms = state.pendingRooms.filter(
-        (r) => r.provincia === state.pendingFilter.province
+        (r) => r.provincia === state.pendingFilter.province,
       );
     }
 
@@ -3095,8 +3488,8 @@
     });
 
     // Podar temáticas seleccionadas que ya no existan en la provincia actual
-    state.pendingFilter.themes = state.pendingFilter.themes.filter(
-      (t) => Boolean(themeCounts[t])
+    state.pendingFilter.themes = state.pendingFilter.themes.filter((t) =>
+      Boolean(themeCounts[t]),
     );
 
     // 2. Faceta de provincias: si hay temática(s) seleccionada(s), las provincias disponibles
@@ -3104,7 +3497,7 @@
     let provFacetRooms = state.pendingRooms;
     if (state.pendingFilter.themes.length > 0) {
       provFacetRooms = state.pendingRooms.filter((r) =>
-        state.pendingFilter.themes.includes(r.tematica)
+        state.pendingFilter.themes.includes(r.tematica),
       );
     }
 
@@ -3132,10 +3525,10 @@
     }
 
     const provList = Object.entries(provCounts).sort(
-      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es")
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"),
     );
     const themeList = Object.entries(themeCounts).sort(
-      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es")
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"),
     );
 
     const provSelect = document.getElementById("pending-province-select");
@@ -3143,7 +3536,10 @@
       provSelect.innerHTML =
         `<option value="ALL">Todas las provincias (${provFacetRooms.length})</option>` +
         provList
-          .map(([p, c]) => `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${c})</option>`)
+          .map(
+            ([p, c]) =>
+              `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${c})</option>`,
+          )
           .join("");
       provSelect.value = state.pendingFilter.province;
     }
@@ -3151,7 +3547,9 @@
     const selectedThemes = state.pendingFilter.themes;
 
     // Renderizar opciones de multiselección en el dropdown
-    const themeOptionsContainer = document.getElementById("pending-theme-options");
+    const themeOptionsContainer = document.getElementById(
+      "pending-theme-options",
+    );
     if (themeOptionsContainer) {
       const allSelected = selectedThemes.length === 0;
       let optionsHtml = `
@@ -3192,7 +3590,10 @@
         labelEl.textContent = "Todas las temáticas";
         badgeEl.hidden = true;
         trigger.classList.remove("has-active-selection");
-      } else if (themeList.length > 0 && selectedThemes.length === themeList.length) {
+      } else if (
+        themeList.length > 0 &&
+        selectedThemes.length === themeList.length
+      ) {
         labelEl.textContent = `Todas (${selectedThemes.length})`;
         badgeEl.textContent = String(selectedThemes.length);
         badgeEl.hidden = false;
@@ -3227,7 +3628,7 @@
                   ${escapeHtml(t)}
                   <button type="button" class="btn-chip-remove" data-remove-theme="${escapeHtml(t)}" aria-label="Quitar ${escapeHtml(t)}">×</button>
                 </span>
-              `
+              `,
             )
             .join("")}
           <button type="button" class="btn-clear-all-themes" id="pending-clear-all-themes">Quitar todas (${selectedThemes.length})</button>
@@ -3245,8 +3646,8 @@
           .map(
             ([p, c]) =>
               `<button type="button" class="prov-chip ${state.pendingFilter.province === p ? "active" : ""}" data-prov="${escapeHtml(
-                p
-              )}">${escapeHtml(p)} <b>${c}</b></button>`
+                p,
+              )}">${escapeHtml(p)} <b>${c}</b></button>`,
           )
           .join("");
 
@@ -3266,26 +3667,34 @@
     const { search, province, themes } = state.pendingFilter;
     const activeThemes = Array.isArray(themes)
       ? themes
-      : (state.pendingFilter.theme && state.pendingFilter.theme !== "ALL" ? [state.pendingFilter.theme] : []);
+      : state.pendingFilter.theme && state.pendingFilter.theme !== "ALL"
+        ? [state.pendingFilter.theme]
+        : [];
     const q = normalizeKey(search);
 
-    const hasActivePendingFilter = Boolean(q) || province !== "ALL" || activeThemes.length > 0;
+    const hasActivePendingFilter =
+      Boolean(q) || province !== "ALL" || activeThemes.length > 0;
     const resetBtn = document.getElementById("pending-reset-btn");
     if (resetBtn) resetBtn.hidden = !hasActivePendingFilter;
 
     const filtered = state.pendingRooms.filter((r) => {
       if (province !== "ALL" && r.provincia !== province) return false;
-      if (activeThemes.length > 0 && !activeThemes.includes(r.tematica)) return false;
+      if (activeThemes.length > 0 && !activeThemes.includes(r.tematica))
+        return false;
       if (q) {
         const cat = resolveRoomCatalog(r);
         const desc = cat?.description ? normalizeKey(cat.description) : "";
-        const hay = normalizeKey(`${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.masInfo} ${r.tematica} ${desc}`);
+        const hay = normalizeKey(
+          `${r.sala} ${r.empresa} ${r.ciudad} ${r.provincia} ${r.masInfo} ${r.tematica} ${desc}`,
+        );
         if (!hay.includes(q)) return false;
       }
       return true;
     });
 
-    document.getElementById("pending-count-pill").textContent = String(filtered.length);
+    document.getElementById("pending-count-pill").textContent = String(
+      filtered.length,
+    );
 
     const grid = document.getElementById("pending-grid");
     if (filtered.length === 0) {
@@ -3325,11 +3734,15 @@
                   <span>👥 ${escapeHtml(playersTxt)}</span>
                   <span>⏱️ ${escapeHtml(durTxt)}</span>
                 </div>
-                ${cat?.url ? `
+                ${
+                  cat?.url
+                    ? `
                   <a href="${cat.url}" target="_blank" rel="noopener noreferrer" class="pending-web-link" onclick="event.stopPropagation()">
                     ${cat.closed ? "📁 Ficha ↗" : "🌐 Web ↗"}
                   </a>
-                ` : ""}
+                `
+                    : ""
+                }
               </div>
             </div>
           </article>
@@ -3379,7 +3792,9 @@
     const counts = sortedYears.map((y) => byYear[y].count);
     const avgs = sortedYears.map((y) => {
       const arr = byYear[y].scores;
-      return arr.length ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2)) : null;
+      return arr.length
+        ? Number((arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2))
+        : null;
     });
 
     const undatedEl = document.getElementById("undated-badge");
@@ -3425,7 +3840,7 @@
           if (val > 0) c.fillText(String(val), bar.x, bar.y - 7);
         });
         c.restore();
-      }
+      },
     };
 
     state.charts.year = new Chart(ctx, {
@@ -3438,12 +3853,14 @@
             label: "Salas visitadas",
             data: counts,
             backgroundColor: sortedYears.map((y) =>
-              y === peakYear ? "rgba(245, 176, 56, 0.85)" : "rgba(56, 189, 248, 0.68)"
+              y === peakYear
+                ? "rgba(245, 176, 56, 0.85)"
+                : "rgba(56, 189, 248, 0.68)",
             ),
             hoverBackgroundColor: "#ffd166",
             borderRadius: 8,
             maxBarThickness: 44,
-            yAxisID: "y"
+            yAxisID: "y",
           },
           {
             type: "line",
@@ -3455,9 +3872,9 @@
             pointRadius: 4,
             tension: 0.32,
             spanGaps: true,
-            yAxisID: "y1"
-          }
-        ]
+            yAxisID: "y1",
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -3475,43 +3892,53 @@
         },
         plugins: {
           legend: {
-            labels: { color: "#cbd5e1", font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 } }
+            labels: {
+              color: "#cbd5e1",
+              font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+            },
           },
           tooltip: {
             backgroundColor: "#0f172a",
             borderColor: "rgba(245,176,56,0.4)",
-            borderWidth: 1
-          }
+            borderWidth: 1,
+          },
         },
         scales: {
           x: {
-            ticks: { color: "#94a3b8", font: { family: "'JetBrains Mono', monospace" } },
-            grid: { display: false }
+            ticks: {
+              color: "#94a3b8",
+              font: { family: "'JetBrains Mono', monospace" },
+            },
+            grid: { display: false },
           },
           y: {
             beginAtZero: true,
             suggestedMax: Math.max(...counts, 5) + 3,
             ticks: { color: "#94a3b8", precision: 0 },
-            grid: { color: "rgba(148,163,184,0.1)" }
+            grid: { color: "rgba(148,163,184,0.1)" },
           },
           y1: {
             position: "right",
             min: 1,
             max: 5,
             ticks: { color: "#f5b038" },
-            grid: { drawOnChartArea: false }
-          }
-        }
+            grid: { drawOnChartArea: false },
+          },
+        },
       },
-      plugins: [valueLabelsPlugin]
+      plugins: [valueLabelsPlugin],
     });
   }
 
   function renderExtraStats() {
     // 1. Radar 7 criterios (Media Global + cada miembro que haya valorado salas)
     const avgMedia = DIMENSIONS.map((_, i) => {
-      const vals = state.visitedRooms.map((r) => r.media.dims[i]).filter((v) => v !== null);
-      return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+      const vals = state.visitedRooms
+        .map((r) => r.media.dims[i])
+        .filter((v) => v !== null);
+      return vals.length
+        ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2))
+        : 0;
     });
 
     const radarDatasets = [
@@ -3521,20 +3948,24 @@
         borderColor: "#f5b038",
         backgroundColor: "rgba(245, 176, 56, 0.22)",
         borderWidth: 2.3,
-        pointRadius: 3
-      }
+        pointRadius: 3,
+      },
     ];
 
     let allNonZero = avgMedia.filter((v) => v > 0);
 
     CORE_MEMBERS.forEach((m) => {
-      const hasAny = state.visitedRooms.some((r) => r.ratings[m.key]?.hasAnyScore);
+      const hasAny = state.visitedRooms.some(
+        (r) => r.ratings[m.key]?.hasAnyScore,
+      );
       if (!hasAny) return;
       const mData = DIMENSIONS.map((_, i) => {
         const vals = state.visitedRooms
           .map((r) => r.ratings[m.key]?.dims[i] ?? null)
           .filter((v) => v !== null);
-        return vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2)) : 0;
+        return vals.length
+          ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(2))
+          : 0;
       });
       allNonZero = allNonZero.concat(mData.filter((v) => v > 0));
       radarDatasets.push({
@@ -3543,11 +3974,13 @@
         borderColor: m.color,
         backgroundColor: m.bg.replace("0.18", "0.10"),
         borderWidth: 1.9,
-        pointRadius: 2.8
+        pointRadius: 2.8,
       });
     });
 
-    const minRadar = allNonZero.length ? Math.max(0, Math.floor(Math.min(...allNonZero) - 0.5)) : 2;
+    const minRadar = allNonZero.length
+      ? Math.max(0, Math.floor(Math.min(...allNonZero) - 0.5))
+      : 2;
 
     const radarCtx = document.getElementById("radarChart").getContext("2d");
     if (state.charts.radar) state.charts.radar.destroy();
@@ -3555,7 +3988,7 @@
       type: "radar",
       data: {
         labels: DIMENSIONS,
-        datasets: radarDatasets
+        datasets: radarDatasets,
       },
       options: {
         responsive: true,
@@ -3564,16 +3997,23 @@
           r: {
             min: minRadar,
             max: 5,
-            ticks: { stepSize: 0.5, color: "#64748b", backdropColor: "transparent" },
+            ticks: {
+              stepSize: 0.5,
+              color: "#64748b",
+              backdropColor: "transparent",
+            },
             grid: { color: "rgba(148,163,184,0.14)" },
             angleLines: { color: "rgba(148,163,184,0.14)" },
-            pointLabels: { color: "#e2e8f0", font: { size: 11, weight: "600" } }
-          }
+            pointLabels: {
+              color: "#e2e8f0",
+              font: { size: 11, weight: "600" },
+            },
+          },
         },
         plugins: {
-          legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
-        }
-      }
+          legend: { labels: { color: "#cbd5e1", boxWidth: 12 } },
+        },
+      },
     });
 
     // 2. Temáticas: Visitadas vs Pendientes
@@ -3604,36 +4044,36 @@
             label: "Visitadas",
             data: topThemes.map(([, v]) => v.vis),
             backgroundColor: "rgba(56, 189, 248, 0.78)",
-            borderRadius: 6
+            borderRadius: 6,
           },
           {
             label: "Pendientes",
             data: topThemes.map(([, v]) => v.pend),
             backgroundColor: "rgba(245, 176, 56, 0.72)",
-            borderRadius: 6
-          }
-        ]
+            borderRadius: 6,
+          },
+        ],
       },
       options: {
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: "#cbd5e1", boxWidth: 12 } }
+          legend: { labels: { color: "#cbd5e1", boxWidth: 12 } },
         },
         scales: {
           x: {
             stacked: true,
             ticks: { color: "#94a3b8", precision: 0 },
-            grid: { color: "rgba(148,163,184,0.1)" }
+            grid: { color: "rgba(148,163,184,0.1)" },
           },
           y: {
             stacked: true,
             ticks: { color: "#e2e8f0" },
-            grid: { display: false }
-          }
-        }
-      }
+            grid: { display: false },
+          },
+        },
+      },
     });
 
     // 3. Empresas con >= 2 salas jugadas ordenadas por nota media
@@ -3641,7 +4081,8 @@
     state.visitedRooms.forEach((r) => {
       if (!r.empresa || r.empresa === "Sin empresa") return;
       const key = normalizeKey(r.empresa);
-      if (!compStats[key]) compStats[key] = { name: r.empresa, count: 0, scores: [] };
+      if (!compStats[key])
+        compStats[key] = { name: r.empresa, count: 0, scores: [] };
       compStats[key].count += 1;
       if (r.media.media !== null) compStats[key].scores.push(r.media.media);
     });
@@ -3650,7 +4091,7 @@
       .filter((c) => c.count >= 2 && c.scores.length > 0)
       .map((c) => ({
         ...c,
-        avg: c.scores.reduce((s, v) => s + v, 0) / c.scores.length
+        avg: c.scores.reduce((s, v) => s + v, 0) / c.scores.length,
       }))
       .sort((a, b) => b.avg - a.avg || b.count - a.count)
       .slice(0, 7);
@@ -3667,7 +4108,7 @@
               <div class="stat-bar-fill" style="width:${Math.round((c.avg / 5) * 100)}%"></div>
             </div>
           </div>
-        `
+        `,
       )
       .join("");
 
@@ -3678,28 +4119,33 @@
       {
         label: "Obras maestras (4,50 – 5,00★)",
         count: ratedRooms.filter((r) => r.media.media >= 4.5).length,
-        color: "#ffd166"
+        color: "#ffd166",
       },
       {
         label: "Sobresalientes (4,00 – 4,49★)",
-        count: ratedRooms.filter((r) => r.media.media >= 4.0 && r.media.media < 4.5).length,
-        color: "#38bdf8"
+        count: ratedRooms.filter(
+          (r) => r.media.media >= 4.0 && r.media.media < 4.5,
+        ).length,
+        color: "#38bdf8",
       },
       {
         label: "Notables (3,50 – 3,99★)",
-        count: ratedRooms.filter((r) => r.media.media >= 3.5 && r.media.media < 4.0).length,
-        color: "#34d399"
+        count: ratedRooms.filter(
+          (r) => r.media.media >= 3.5 && r.media.media < 4.0,
+        ).length,
+        color: "#34d399",
       },
       {
         label: "Aprobadas / Discretas (< 3,50★)",
         count: ratedRooms.filter((r) => r.media.media < 3.5).length,
-        color: "#94a3b8"
-      }
+        color: "#94a3b8",
+      },
     ];
 
     const exOk = state.visitedRooms.filter((r) => r.exito === "S").length;
     const exFail = state.visitedRooms.filter((r) => r.exito === "N").length;
-    const successPct = exOk + exFail > 0 ? Math.round((exOk / (exOk + exFail)) * 100) : 0;
+    const successPct =
+      exOk + exFail > 0 ? Math.round((exOk / (exOk + exFail)) * 100) : 0;
 
     document.getElementById("ratings-dist-list").innerHTML =
       brackets
@@ -3745,20 +4191,23 @@
 
     // Mostrar como columnas los integrantes del grupo que visitaron la sala (o todos si ninguno consta)
     const roomMembers = CORE_MEMBERS.filter(
-      (m) => r.deNosotros.includes(m.key) || r.ratings[m.key]?.hasAnyScore
+      (m) => r.deNosotros.includes(m.key) || r.ratings[m.key]?.hasAnyScore,
     );
     const colsToShow = roomMembers.length > 0 ? roomMembers : CORE_MEMBERS;
 
     const headerColsHtml = colsToShow
       .map(
-        (m) => `<th class="num" style="color:${m.color}">${escapeHtml(m.name)}</th>`
+        (m) =>
+          `<th class="num" style="color:${m.color}">${escapeHtml(m.name)}</th>`,
       )
       .join("");
 
     const rowsHtml = DIMENSIONS.map((dim, i) => {
       const isDiff = i === 0;
       const memberCells = colsToShow
-        .map((m) => `<td class="num">${fmtScore(r.ratings[m.key]?.dims[i])}</td>`)
+        .map(
+          (m) => `<td class="num">${fmtScore(r.ratings[m.key]?.dims[i])}</td>`,
+        )
         .join("");
 
       return `
@@ -3771,23 +4220,27 @@
     }).join("");
 
     const finalCellsHtml = colsToShow
-      .map((m) => `<td class="num"><strong>${fmtScore(r.ratings[m.key]?.media)}</strong></td>`)
+      .map(
+        (m) =>
+          `<td class="num"><strong>${fmtScore(r.ratings[m.key]?.media)}</strong></td>`,
+      )
       .join("");
 
     const canRate = canMemberRateRoom(state.currentMember, r);
-    const myHasScore = state.currentMember && r.ratings[state.currentMember.key]?.hasAnyScore;
+    const myHasScore =
+      state.currentMember && r.ratings[state.currentMember.key]?.hasAnyScore;
 
     const rateActionHtml = canRate
       ? `<button type="button" id="modal-rate-room-btn" class="btn-rate-room ${
           myHasScore ? "" : "is-unrated"
         }">
           ${myHasScore ? "✏️ Editar mi valoración" : "✍️ Añadir mi valoración"} (${escapeHtml(
-          state.currentMember.name
-        )})
+            state.currentMember.name,
+          )})
         </button>`
       : r.status === "visited"
-      ? `<span class="unrated-pill">🔒 Solo quienes visitaron la sala pueden valorarla</span>`
-      : "";
+        ? `<span class="unrated-pill">🔒 Solo quienes visitaron la sala pueden valorarla</span>`
+        : "";
 
     const cat = resolveRoomCatalog(r);
     const heroImg = cat?.image || "assets/hero-bg.jpg";
@@ -3846,7 +4299,7 @@
       ${
         r.opinion
           ? `<p style="background:rgba(255,255,255,0.04);padding:0.75rem;border-radius:10px;font-size:0.88rem;margin-bottom:1rem"><strong>Opinión del equipo:</strong> ${escapeHtml(
-              r.opinion
+              r.opinion,
             )}</p>`
           : ""
       }
@@ -3872,9 +4325,11 @@
       </div>
     `;
 
-    document.getElementById("modal-rate-room-btn")?.addEventListener("click", () => {
-      openRatingModal(r.id);
-    });
+    document
+      .getElementById("modal-rate-room-btn")
+      ?.addEventListener("click", () => {
+        openRatingModal(r.id);
+      });
 
     modal.hidden = false;
   }
@@ -3886,12 +4341,14 @@
      --------------------------------------------------------- */
 
   function bindEvents() {
-    document.querySelectorAll(".sidebar-link[data-section-link]").forEach((link) => {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        navigateToSection(link.getAttribute("data-section-link"));
+    document
+      .querySelectorAll(".sidebar-link[data-section-link]")
+      .forEach((link) => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          navigateToSection(link.getAttribute("data-section-link"));
+        });
       });
-    });
 
     document.querySelectorAll("[data-nav-target]").forEach((el) => {
       el.addEventListener("click", (e) => {
@@ -3900,9 +4357,15 @@
       });
     });
 
-    document.getElementById("sidebar-open-btn").addEventListener("click", openMobileSidebar);
-    document.getElementById("sidebar-close-btn").addEventListener("click", closeMobileSidebar);
-    document.getElementById("sidebar-backdrop").addEventListener("click", closeMobileSidebar);
+    document
+      .getElementById("sidebar-open-btn")
+      .addEventListener("click", openMobileSidebar);
+    document
+      .getElementById("sidebar-close-btn")
+      .addEventListener("click", closeMobileSidebar);
+    document
+      .getElementById("sidebar-backdrop")
+      .addEventListener("click", closeMobileSidebar);
 
     window.addEventListener("hashchange", () => {
       const target = resolveSectionFromHash();
@@ -3915,18 +4378,23 @@
       requestGoogleLogin("select_account");
     });
 
-    document.getElementById("sync-sheet-btn").addEventListener("click", async () => {
-      if (state.user?.accessToken) {
-        await verifyAndUnlockDashboard(state.user);
-      } else {
-        requestGoogleLogin("select_account");
-      }
-    });
+    document
+      .getElementById("sync-sheet-btn")
+      .addEventListener("click", async () => {
+        if (state.user?.accessToken) {
+          await verifyAndUnlockDashboard(state.user, { showIntro: false });
+        } else {
+          requestGoogleLogin("select_account");
+        }
+      });
 
     document.getElementById("logout-btn").addEventListener("click", () => {
       if (state.user?.accessToken && window.google?.accounts?.oauth2?.revoke) {
         try {
-          window.google.accounts.oauth2.revoke(state.user.accessToken, () => {});
+          window.google.accounts.oauth2.revoke(
+            state.user.accessToken,
+            () => {},
+          );
         } catch (_) {}
       }
       state.user = null;
@@ -3935,7 +4403,11 @@
       closeMobileSidebar();
       navigateToSection("dashboard", { updateHash: false, scrollTop: true });
       if (window.location.hash) {
-        history.replaceState(null, "", window.location.pathname + window.location.search);
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
       }
       document.getElementById("room-modal").hidden = true;
       document.getElementById("rating-modal").hidden = true;
@@ -3946,7 +4418,9 @@
     // Selector de modo de Ranking Top 10
     document.querySelectorAll(".seg-btn[data-rank-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".seg-btn[data-rank-mode]").forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".seg-btn[data-rank-mode]")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         state.rankMode = btn.getAttribute("data-rank-mode");
         renderTop10();
@@ -3954,45 +4428,60 @@
     });
 
     // Filtros de la sección personal (Mi Espacio)
-    document.querySelectorAll(".seg-btn[data-personal-status]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        setPersonalStatusFilter(btn.getAttribute("data-personal-status"));
+    document
+      .querySelectorAll(".seg-btn[data-personal-status]")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          setPersonalStatusFilter(btn.getAttribute("data-personal-status"));
+        });
       });
-    });
 
-    document.getElementById("personal-search").addEventListener("input", (e) => {
-      state.personalFilter.search = e.target.value;
-      state.personalFilter.page = 1;
-      renderPersonalRoomsTable();
-    });
-
-    document.getElementById("personal-year-filter").addEventListener("change", (e) => {
-      state.personalFilter.year = e.target.value;
-      state.personalFilter.page = 1;
-      renderPersonalRoomsTable();
-    });
-
-    document.getElementById("personal-page-size").addEventListener("change", (e) => {
-      state.personalFilter.pageSize = Number(e.target.value) || 10;
-      state.personalFilter.page = 1;
-      renderPersonalRoomsTable();
-    });
-
-    document.getElementById("personal-reset-btn").addEventListener("click", () => {
-      state.personalFilter = {
-        status: "ALL",
-        search: "",
-        year: "ALL",
-        page: 1,
-        pageSize: state.personalFilter.pageSize
-      };
-      document.getElementById("personal-search").value = "";
-      document.getElementById("personal-year-filter").value = "ALL";
-      document.querySelectorAll(".seg-btn[data-personal-status]").forEach((b) => {
-        b.classList.toggle("active", b.getAttribute("data-personal-status") === "ALL");
+    document
+      .getElementById("personal-search")
+      .addEventListener("input", (e) => {
+        state.personalFilter.search = e.target.value;
+        state.personalFilter.page = 1;
+        renderPersonalRoomsTable();
       });
-      renderPersonalRoomsTable();
-    });
+
+    document
+      .getElementById("personal-year-filter")
+      .addEventListener("change", (e) => {
+        state.personalFilter.year = e.target.value;
+        state.personalFilter.page = 1;
+        renderPersonalRoomsTable();
+      });
+
+    document
+      .getElementById("personal-page-size")
+      .addEventListener("change", (e) => {
+        state.personalFilter.pageSize = Number(e.target.value) || 10;
+        state.personalFilter.page = 1;
+        renderPersonalRoomsTable();
+      });
+
+    document
+      .getElementById("personal-reset-btn")
+      .addEventListener("click", () => {
+        state.personalFilter = {
+          status: "ALL",
+          search: "",
+          year: "ALL",
+          page: 1,
+          pageSize: state.personalFilter.pageSize,
+        };
+        document.getElementById("personal-search").value = "";
+        document.getElementById("personal-year-filter").value = "ALL";
+        document
+          .querySelectorAll(".seg-btn[data-personal-status]")
+          .forEach((b) => {
+            b.classList.toggle(
+              "active",
+              b.getAttribute("data-personal-status") === "ALL",
+            );
+          });
+        renderPersonalRoomsTable();
+      });
 
     // Botones rápidos de encuadre del mapa
     const mapViews = {
@@ -4001,15 +4490,18 @@
       madrid: { center: [40.38, -3.72], zoom: 10 },
       barcelona: { center: [41.44, 2.18], zoom: 10 },
       norte: { center: [42.98, -2.45], zoom: 8 },
-      valencia: { center: [39.47, -0.37], zoom: 12 }
+      valencia: { center: [39.47, -0.37], zoom: 12 },
     };
 
     document.querySelectorAll(".chip-btn[data-map-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".chip-btn[data-map-view]").forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".chip-btn[data-map-view]")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         const v = mapViews[btn.getAttribute("data-map-view")];
-        if (v && state.map) state.map.flyTo(v.center, v.zoom, { duration: 0.8 });
+        if (v && state.map)
+          state.map.flyTo(v.center, v.zoom, { duration: 0.8 });
       });
     });
 
@@ -4020,39 +4512,47 @@
       renderVisitedTable();
     });
 
-    document.getElementById("visited-member-filter").addEventListener("change", (e) => {
-      state.visitedFilter.member = e.target.value;
-      state.visitedFilter.page = 1;
-      renderMembersCount();
-      renderVisitedTable();
-    });
+    document
+      .getElementById("visited-member-filter")
+      .addEventListener("change", (e) => {
+        state.visitedFilter.member = e.target.value;
+        state.visitedFilter.page = 1;
+        renderMembersCount();
+        renderVisitedTable();
+      });
 
-    document.getElementById("visited-year-filter").addEventListener("change", (e) => {
-      state.visitedFilter.year = e.target.value;
-      state.visitedFilter.page = 1;
-      renderVisitedTable();
-    });
+    document
+      .getElementById("visited-year-filter")
+      .addEventListener("change", (e) => {
+        state.visitedFilter.year = e.target.value;
+        state.visitedFilter.page = 1;
+        renderVisitedTable();
+      });
 
-    document.getElementById("visited-page-size").addEventListener("change", (e) => {
-      state.visitedFilter.pageSize = Number(e.target.value) || 10;
-      state.visitedFilter.page = 1;
-      renderVisitedTable();
-    });
+    document
+      .getElementById("visited-page-size")
+      .addEventListener("change", (e) => {
+        state.visitedFilter.pageSize = Number(e.target.value) || 10;
+        state.visitedFilter.page = 1;
+        renderVisitedTable();
+      });
 
-    document.getElementById("visited-reset-btn").addEventListener("click", () => {
-      state.visitedFilter = {
-        search: "",
-        member: "ALL",
-        year: "ALL",
-        page: 1,
-        pageSize: state.visitedFilter.pageSize
-      };
-      document.getElementById("visited-search").value = "";
-      document.getElementById("visited-member-filter").value = "ALL";
-      document.getElementById("visited-year-filter").value = "ALL";
-      renderMembersCount();
-      renderVisitedTable();
-    });
+    document
+      .getElementById("visited-reset-btn")
+      .addEventListener("click", () => {
+        state.visitedFilter = {
+          search: "",
+          member: "ALL",
+          year: "ALL",
+          page: 1,
+          pageSize: state.visitedFilter.pageSize,
+        };
+        document.getElementById("visited-search").value = "";
+        document.getElementById("visited-member-filter").value = "ALL";
+        document.getElementById("visited-year-filter").value = "ALL";
+        renderMembersCount();
+        renderVisitedTable();
+      });
 
     // Filtros de salas pendientes
     document.getElementById("pending-search").addEventListener("input", (e) => {
@@ -4060,18 +4560,22 @@
       renderPendingList();
     });
 
-    document.getElementById("pending-province-select").addEventListener("change", (e) => {
-      state.pendingFilter.province = e.target.value;
-      populatePendingFilters();
-      renderPendingList();
-    });
+    document
+      .getElementById("pending-province-select")
+      .addEventListener("change", (e) => {
+        state.pendingFilter.province = e.target.value;
+        populatePendingFilters();
+        renderPendingList();
+      });
 
     // Dropdown multi-selección de temáticas
     const themeDropdown = document.getElementById("pending-theme-dropdown");
     const themeTrigger = document.getElementById("pending-theme-trigger");
     const themePanel = document.getElementById("pending-theme-panel");
     const themeSearchInput = document.getElementById("pending-theme-search");
-    const themeSelectAllBtn = document.getElementById("pending-theme-select-all");
+    const themeSelectAllBtn = document.getElementById(
+      "pending-theme-select-all",
+    );
     const themeClearBtn = document.getElementById("pending-theme-clear");
     const activeThemesBar = document.getElementById("pending-active-themes");
 
@@ -4085,7 +4589,9 @@
 
     function filterThemeOptions(term) {
       const q = normalizeKey(term);
-      const options = document.querySelectorAll("#pending-theme-options .multiselect-option");
+      const options = document.querySelectorAll(
+        "#pending-theme-options .multiselect-option",
+      );
       options.forEach((opt) => {
         const val = opt.getAttribute("data-theme-val");
         if (val === "ALL") {
@@ -4137,13 +4643,16 @@
     if (themeSelectAllBtn) {
       themeSelectAllBtn.addEventListener("click", () => {
         let availableRooms = state.pendingRooms;
-        if (state.pendingFilter.province && state.pendingFilter.province !== "ALL") {
+        if (
+          state.pendingFilter.province &&
+          state.pendingFilter.province !== "ALL"
+        ) {
           availableRooms = state.pendingRooms.filter(
-            (r) => r.provincia === state.pendingFilter.province
+            (r) => r.provincia === state.pendingFilter.province,
           );
         }
         const availableThemes = Array.from(
-          new Set(availableRooms.map((r) => r.tematica).filter(Boolean))
+          new Set(availableRooms.map((r) => r.tematica).filter(Boolean)),
         );
         state.pendingFilter.themes = availableThemes;
         populatePendingFilters();
@@ -4183,7 +4692,9 @@
               state.pendingFilter.themes.push(val);
             }
           } else {
-            state.pendingFilter.themes = state.pendingFilter.themes.filter((t) => t !== val);
+            state.pendingFilter.themes = state.pendingFilter.themes.filter(
+              (t) => t !== val,
+            );
           }
         }
         populatePendingFilters();
@@ -4199,7 +4710,9 @@
         const removeBtn = e.target.closest("[data-remove-theme]");
         if (removeBtn) {
           const tToRemove = removeBtn.getAttribute("data-remove-theme");
-          state.pendingFilter.themes = (state.pendingFilter.themes || []).filter((t) => t !== tToRemove);
+          state.pendingFilter.themes = (
+            state.pendingFilter.themes || []
+          ).filter((t) => t !== tToRemove);
           populatePendingFilters();
           renderPendingList();
           return;
@@ -4214,12 +4727,14 @@
       });
     }
 
-    document.getElementById("pending-reset-btn").addEventListener("click", () => {
-      state.pendingFilter = { search: "", province: "ALL", themes: [] };
-      document.getElementById("pending-search").value = "";
-      populatePendingFilters();
-      renderPendingList();
-    });
+    document
+      .getElementById("pending-reset-btn")
+      .addEventListener("click", () => {
+        state.pendingFilter = { search: "", province: "ALL", themes: [] };
+        document.getElementById("pending-search").value = "";
+        populatePendingFilters();
+        renderPendingList();
+      });
 
     // Cierre de modales (detalle y valoración) y menú móvil con Escape
     const roomModal = document.getElementById("room-modal");
@@ -4236,7 +4751,9 @@
       }
     });
 
-    document.getElementById("rating-modal-close-btn").addEventListener("click", closeRatingModal);
+    document
+      .getElementById("rating-modal-close-btn")
+      .addEventListener("click", closeRatingModal);
     ratingModal.addEventListener("click", (e) => {
       if (e.target === ratingModal) closeRatingModal();
     });
