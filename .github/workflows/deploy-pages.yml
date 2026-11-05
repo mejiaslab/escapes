@@ -1,4 +1,4 @@
-name: Publicar en GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: "pages"
@@ -16,30 +14,23 @@ concurrency:
 
 jobs:
   deploy:
-    name: Desplegar web en GitHub Pages
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repositorio
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Preparar paquete estático (_site, sin datos estáticos)
+      - name: Prepare static package
         run: |
           mkdir -p _site/assets
           cp index.html styles.css locations.js rooms-catalog.js app.js favicon.svg _site/
           cp -r assets/* _site/assets/
           touch _site/.nojekyll
 
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Subir artefacto de Pages
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: "_site"
-
-      - name: Publicar en GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          keep_files: true
