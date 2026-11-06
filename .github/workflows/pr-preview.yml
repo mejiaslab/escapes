@@ -23,8 +23,10 @@ jobs:
       - name: Prepare static package
         if: github.event.action != 'closed'
         run: |
-          mkdir -p _site/assets
-          cp index.html styles.css locations.js rooms-catalog.js app.js favicon.svg _site/
+          mkdir -p _site/assets _site/css _site/js
+          cp index.html favicon.svg _site/
+          cp -r css/* _site/css/
+          cp -r js/* _site/js/
           cp -r assets/* _site/assets/
           touch _site/.nojekyll
 
