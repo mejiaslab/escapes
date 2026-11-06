@@ -1,43 +1,50 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-ES">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Expediente Escapista · Panel Privado de Escape Rooms</title>
-  <meta name="description" content="Dashboard privado de seguimiento, ranking, mapa, equipo y estadísticas de Escape Rooms conectado en tiempo real a Google Sheets." />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <title>Expediente Escapista · Panel Privado de Salas de Escape</title>
+  <meta name="description" content="Panel privado de seguimiento, clasificación, mapa, equipo y estadísticas de salas de escape conectado en tiempo real a Google Sheets." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Leaflet & MarkerCluster -->
+  <!-- Leaflet & MarkerCluster stylesheets -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 
-  <!-- Estilos propios -->
-  <link rel="stylesheet" href="styles.css" />
+  <!-- Modular application stylesheets -->
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/auth.css" />
+  <link rel="stylesheet" href="./css/layout.css" />
+  <link rel="stylesheet" href="./css/dashboard.css" />
+  <link rel="stylesheet" href="./css/tables-filters.css" />
+  <link rel="stylesheet" href="./css/cards.css" />
+  <link rel="stylesheet" href="./css/charts-map.css" />
+  <link rel="stylesheet" href="./css/modals-personal.css" />
 
   <!-- Google Identity Services (OAuth 2.0) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <!-- =========================================================
-       PANTALLA DE ACCESO OAUTH CON GOOGLE CLOUD
+       GOOGLE OAUTH 2.0 ACCESS GATEWAY
        ========================================================= -->
   <main id="auth-gate" class="auth-gate">
     <div class="auth-backdrop"></div>
     <div class="auth-container">
       <div class="auth-card">
         <div class="auth-badge">
-          <span class="pulse-dot"></span>
+          <span class="pulse-dot" aria-hidden="true"></span>
           <span>ACCESO PRIVADO · PERMISOS DE GOOGLE SHEETS</span>
         </div>
 
         <div class="auth-brand">
-          <img src="favicon.svg" alt="Candado Expediente Escapista" class="auth-logo" />
+          <img src="./favicon.svg" alt="Candado de Expediente Escapista" class="auth-logo" />
           <div>
             <h1>Expediente Escapista</h1>
             <p class="auth-subtitle">Sincronización en vivo · <strong>Escapes (Datos + Hojas personales)</strong></p>
@@ -60,16 +67,18 @@
           </button>
         </div>
 
-        <div id="auth-message" class="auth-message" hidden></div>
+        <div id="auth-message" class="auth-message" role="status" aria-live="polite" hidden></div>
 
         <footer class="auth-footer">
-          <span>🔒 Protegido por Google Drive / Sheets IAM · OAuth 2.0</span>
+          <span>🔒 Acceso protegido mediante OAuth 2.0 y permisos de Google Sheets</span>
         </footer>
       </div>
     </div>
   </main>
 
-  <!-- INTRO CINEMATOGRÁFICA -->
+  <!-- =========================================================
+       CINEMATIC INTRO OVERLAY
+       ========================================================= -->
   <div id="intro-screen" class="intro-screen" hidden>
     <video
       id="intro-video"
@@ -77,31 +86,31 @@
       preload="metadata"
       playsinline
     >
-      <source src="assets/Intro-monja.mp4" type="video/mp4" />
+      <source src="./assets/intro-video.mp4" type="video/mp4" />
     </video>
 
     <div class="intro-controls">
-      <button id="intro-sound-btn" class="intro-ctrl-btn" type="button" aria-label="Activar o desactivar sonido" title="Activar sonido" hidden>
+      <button id="intro-sound-btn" class="intro-ctrl-btn" type="button" aria-label="Activar sonido" title="Activar sonido" hidden>
         <span id="intro-sound-icon" aria-hidden="true">🔇</span>
       </button>
-      <button id="intro-skip-btn" class="intro-ctrl-btn intro-skip-btn" type="button" aria-label="Saltar introducción">
-        SALTAR INTRO →
+      <button id="intro-skip-btn" class="intro-ctrl-btn" type="button" aria-label="Saltar introducción">
+        SALTAR INTRODUCCIÓN →
       </button>
     </div>
   </div>
 
   <!-- =========================================================
-       APLICACIÓN PRINCIPAL CON MENÚ LATERAL (TRAS AUTENTICACIÓN)
+       AUTHENTICATED APPLICATION SHELL (SIDEBAR + WORKSPACE)
        ========================================================= -->
   <div id="app-shell" class="app-shell" hidden>
-    <!-- Fondo semitransparente para el menú lateral en móvil/tablet -->
+    <!-- Semi-transparent backdrop for mobile/tablet off-canvas drawer -->
     <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
 
-    <!-- MENÚ LATERAL DE NAVEGACIÓN POR SECCIONES -->
+    <!-- SECTION NAVIGATION SIDEBAR -->
     <aside id="app-sidebar" class="sidebar" aria-label="Menú lateral de secciones">
       <div class="sidebar-top">
         <a href="#dashboard" class="brand-link" data-nav-target="dashboard">
-          <img src="favicon.svg" alt="" class="brand-icon" />
+          <img src="./favicon.svg" alt="" class="brand-icon" />
           <div class="brand-text">
             <span class="brand-title">Expediente Escapista</span>
             <span class="brand-tag" id="data-source-badge">Cargando datos…</span>
@@ -120,7 +129,7 @@
                 <rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Dashboard</span>
+            <span class="sidebar-link-text">Panel principal</span>
             <span class="nav-pill nav-pill-subtle">Resumen</span>
           </a>
 
@@ -130,30 +139,30 @@
                 <path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Mi Espacio</span>
+            <span class="sidebar-link-text">Mi espacio</span>
             <span id="nav-badge-personal" class="nav-pill nav-pill-gold">Personal</span>
           </a>
         </div>
 
         <div class="sidebar-group">
-          <span class="sidebar-group-label">Catálogo de Salas</span>
-          <a href="#visitadas" class="sidebar-link" data-section-link="visitadas">
+          <span class="sidebar-group-label">Catálogo de salas</span>
+          <a href="#visited" class="sidebar-link" data-section-link="visited">
             <span class="sidebar-link-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Salas Visitadas</span>
+            <span class="sidebar-link-text">Salas visitadas</span>
             <span id="nav-badge-visited" class="nav-pill">0</span>
           </a>
 
-          <a href="#pendientes" class="sidebar-link" data-section-link="pendientes">
+          <a href="#pending" class="sidebar-link" data-section-link="pending">
             <span class="sidebar-link-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Salas Pendientes</span>
+            <span class="sidebar-link-text">Salas pendientes</span>
             <span id="nav-badge-pending" class="nav-pill nav-pill-amber">0</span>
           </a>
 
@@ -166,24 +175,24 @@
                 <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Ranking Top 10</span>
+            <span class="sidebar-link-text">Clasificación Top 10</span>
             <span class="nav-pill nav-pill-gold">Top 10</span>
           </a>
         </div>
 
         <div class="sidebar-group">
-          <span class="sidebar-group-label">Análisis y Grupo</span>
-          <a href="#mapa" class="sidebar-link" data-section-link="mapa">
+          <span class="sidebar-group-label">Análisis y grupo</span>
+          <a href="#map" class="sidebar-link" data-section-link="map">
             <span class="sidebar-link-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
               </svg>
             </span>
-            <span class="sidebar-link-text">Mapa de Conquistas</span>
+            <span class="sidebar-link-text">Mapa de conquistas</span>
             <span id="nav-badge-map" class="nav-pill">0</span>
           </a>
 
-          <a href="#equipo" class="sidebar-link" data-section-link="equipo">
+          <a href="#team" class="sidebar-link" data-section-link="team">
             <span class="sidebar-link-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -194,7 +203,7 @@
             <span id="nav-badge-team" class="nav-pill">6</span>
           </a>
 
-          <a href="#estadisticas" class="sidebar-link" data-section-link="estadisticas">
+          <a href="#stats" class="sidebar-link" data-section-link="stats">
             <span class="sidebar-link-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
@@ -208,7 +217,7 @@
       <div class="sidebar-footer">
         <div class="sidebar-sheet-card">
           <div class="sidebar-sheet-head">
-            <span class="sidebar-sheet-dot"></span>
+            <span class="sidebar-sheet-dot" aria-hidden="true"></span>
             <span>Google Sheets · <code>Escapes</code></span>
           </div>
           <div id="sidebar-quick-stats" class="sidebar-sheet-meta">Sincronizado en tiempo real</div>
@@ -216,30 +225,30 @@
       </div>
     </aside>
 
-    <!-- ÁREA PRINCIPAL DE CONTENIDO -->
+    <!-- MAIN CONTENT WORKSPACE -->
     <div class="workspace">
-      <!-- Barra superior contextual -->
+      <!-- Contextual sticky topbar -->
       <header class="topbar">
         <div class="topbar-inner">
           <div class="topbar-context">
-            <button id="sidebar-open-btn" type="button" class="sidebar-open-btn" aria-label="Abrir menú de secciones" aria-expanded="false">
+            <button id="sidebar-open-btn" type="button" class="sidebar-open-btn" aria-label="Abrir menú de secciones" aria-controls="app-sidebar" aria-expanded="false">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             </button>
             <div class="topbar-titles">
               <span id="topbar-section-kicker" class="topbar-kicker">VISTA GENERAL</span>
-              <strong id="topbar-section-title" class="topbar-title">Dashboard</strong>
+              <strong id="topbar-section-title" class="topbar-title">Panel principal · Resumen</strong>
             </div>
           </div>
 
           <div class="topbar-user">
-            <button id="sync-sheet-btn" type="button" class="btn-ghost btn-sm" title="Leer directamente de Google Sheets (Escapes → Datos)">
+            <button id="sync-sheet-btn" type="button" class="btn-ghost" title="Sincronizar datos en vivo desde Google Sheets">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                 <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
                 <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
               </svg>
-              <span class="btn-sync-label">Sincronizar Sheet</span>
+              <span class="btn-sync-label">Sincronizar hoja</span>
             </button>
 
             <div class="user-chip" id="user-chip">
@@ -248,20 +257,20 @@
               <span id="user-name" class="user-name">Usuario</span>
             </div>
 
-            <button id="logout-btn" type="button" class="btn-logout" title="Cerrar sesión OAuth">
+            <button id="logout-btn" type="button" class="btn-logout" title="Cerrar sesión">
               Salir
             </button>
           </div>
         </div>
       </header>
 
-      <!-- Aviso informativo opcional -->
-      <div id="sync-banner" class="sync-banner" hidden></div>
+      <!-- Live sync notification banner -->
+      <div id="sync-banner" class="sync-banner" role="status" aria-live="polite" hidden></div>
 
-      <!-- CONTENEDOR DE VISTAS POR SECCIÓN -->
+      <!-- SECTION VIEWS CONTAINER -->
       <main class="workspace-main">
         <!-- =====================================================
-             SECCIÓN 1 (PANTALLA PRINCIPAL): DASHBOARD CON RESUMEN
+             SECTION 1: MAIN DASHBOARD OVERVIEW
              ===================================================== -->
         <section id="view-dashboard" class="app-view" data-section="dashboard" aria-labelledby="heading-dashboard">
           <div class="dashboard-hero">
@@ -272,37 +281,33 @@
                   <span class="eyebrow-key">🗝️ BITÁCORA OFICIAL DEL GRUPO</span>
                   <span id="upcoming-pill" class="upcoming-pill" hidden></span>
                 </div>
-                <h2 id="heading-dashboard">Crónicas de <span class="text-gradient">Escape Rooms</span></h2>
+                <h2 id="heading-dashboard">Crónicas de <span class="text-gradient">Salas de Escape</span></h2>
                 <p class="hero-lead">
                   Resumen general en vivo de cada candado abierto, el podio actual del grupo, vuestras últimas conquistas y los próximos destinos por descubrir.
                 </p>
               </div>
             </div>
 
-            <!-- KPIs globales rápidos (interactivos) -->
-            <div class="hero-kpis" id="hero-kpis">
-              <!-- Renderizado dinámico -->
-            </div>
+            <!-- Interactive executive KPIs -->
+            <div class="hero-kpis" id="hero-kpis"></div>
           </div>
 
-          <!-- Bloques de resumen ejecutivo -->
+          <!-- Executive 2x2 Bento -->
           <div class="dashboard-bento">
-            <!-- Resumen Podio Top 3 -->
+            <!-- Top 3 Podium summary -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
-                  <span class="section-kicker">HALL OF FAME</span>
+                  <span class="section-kicker">SALÓN DE LA FAMA</span>
                   <h4>Podio actual de mejores salas</h4>
                   <p class="panel-sub">Top 3 histórico por valoración media global</p>
                 </div>
                 <button type="button" class="btn-link-action" data-nav-target="ranking">Ver Top 10 →</button>
               </div>
-              <div id="dashboard-podium" class="dash-list">
-                <!-- Renderizado dinámico -->
-              </div>
+              <div id="dashboard-podium" class="dash-list"></div>
             </article>
 
-            <!-- Resumen Actividad Reciente -->
+            <!-- Recent activity summary -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -310,14 +315,12 @@
                   <h4>Últimas salas visitadas</h4>
                   <p class="panel-sub">Las 5 experiencias más recientes del registro</p>
                 </div>
-                <button type="button" class="btn-link-action" data-nav-target="visitadas">Historial completo →</button>
+                <button type="button" class="btn-link-action" data-nav-target="visited">Historial completo →</button>
               </div>
-              <div id="dashboard-recent" class="dash-list">
-                <!-- Renderizado dinámico -->
-              </div>
+              <div id="dashboard-recent" class="dash-list"></div>
             </article>
 
-            <!-- Resumen Participación del Equipo -->
+            <!-- Team attendance summary -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -325,14 +328,12 @@
                   <h4>Participación por integrante</h4>
                   <p class="panel-sub">Pulsa un miembro para filtrar sus salas jugadas</p>
                 </div>
-                <button type="button" class="btn-link-action" data-nav-target="equipo">Detalle equipo →</button>
+                <button type="button" class="btn-link-action" data-nav-target="team">Detalle del equipo →</button>
               </div>
-              <div id="dashboard-team-summary" class="dash-team-grid">
-                <!-- Renderizado dinámico -->
-              </div>
+              <div id="dashboard-team-summary" class="dash-team-grid"></div>
             </article>
 
-            <!-- Resumen Hoja de Ruta y Pulso -->
+            <!-- Roadmap & annual pulse -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -340,38 +341,29 @@
                   <h4>Próximos objetivos y ritmo anual</h4>
                   <p class="panel-sub">Destinos pendientes destacados e hitos del grupo</p>
                 </div>
-                <button type="button" class="btn-link-action" data-nav-target="pendientes">Ver pendientes →</button>
+                <button type="button" class="btn-link-action" data-nav-target="pending">Ver pendientes →</button>
               </div>
-              <div id="dashboard-pulse" class="dash-pulse">
-                <!-- Renderizado dinámico -->
-              </div>
+              <div id="dashboard-pulse" class="dash-pulse"></div>
             </article>
           </div>
         </section>
 
         <!-- =====================================================
-             SECCIÓN PERSONAL: MI ESPACIO (ESTADÍSTICAS Y VALORACIÓN)
+             SECTION 2: PERSONAL WORKSPACE (INDIVIDUAL STATS & RATINGS)
              ===================================================== -->
         <section id="view-personal" class="app-view" data-section="personal" hidden aria-labelledby="heading-personal">
-          <div class="dashboard-hero personal-hero">
+          <div class="dashboard-hero">
             <div class="dashboard-hero-bg"></div>
             <div class="dashboard-hero-top">
-              <div class="hero-copy" id="personal-hero-copy">
-                <!-- Renderizado dinámico según el miembro identificado -->
-              </div>
+              <div class="hero-copy" id="personal-hero-copy"></div>
             </div>
-
-            <div class="hero-kpis" id="personal-kpis">
-              <!-- KPIs personales dinámicos -->
-            </div>
+            <div class="hero-kpis" id="personal-kpis"></div>
           </div>
 
-          <div id="personal-unmatched-card" class="panel-card" hidden>
-            <!-- Se muestra si el usuario de Google no corresponde a Sara, Miguel, Rafa, Antonio o Joan -->
-          </div>
+          <div id="personal-unmatched-card" class="panel-card" hidden></div>
 
           <div id="personal-member-content" class="personal-member-content">
-            <!-- Bloque interactivo para valorar salas visitadas por el miembro -->
+            <!-- Member visited rooms table & rating triggers -->
             <div id="personal-rooms-anchor" class="section-header section-header-wrap">
               <div>
                 <span class="section-kicker">VALORACIÓN DE MIS EXPERIENCIAS</span>
@@ -379,17 +371,17 @@
               </div>
 
               <div class="filters-bar">
-                <div class="segmented-control" role="tablist" aria-label="Estado de valoración">
-                  <button type="button" class="seg-btn active" data-personal-status="ALL">Todas</button>
-                  <button type="button" class="seg-btn" data-personal-status="UNRATED">Pendientes de valorar</button>
-                  <button type="button" class="seg-btn" data-personal-status="RATED">Valoradas</button>
+                <div class="segmented-control" role="group" aria-label="Estado de valoración">
+                  <button type="button" class="seg-btn active" aria-pressed="true" data-personal-status="ALL">Todas</button>
+                  <button type="button" class="seg-btn" aria-pressed="false" data-personal-status="UNRATED">Pendientes de valorar</button>
+                  <button type="button" class="seg-btn" aria-pressed="false" data-personal-status="RATED">Valoradas</button>
                 </div>
 
                 <div class="search-field">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                   </svg>
-                  <input id="personal-search" type="search" placeholder="Buscar entre mis salas…" />
+                  <input id="personal-search" type="search" placeholder="Buscar entre mis salas…" aria-label="Buscar entre mis salas" />
                 </div>
 
                 <select id="personal-year-filter" class="select-input" aria-label="Filtrar mis salas por año">
@@ -402,7 +394,7 @@
                   <option value="50">50 / pág.</option>
                 </select>
 
-                <button id="personal-reset-btn" type="button" class="btn-ghost btn-sm" hidden>Limpiar filtro</button>
+                <button id="personal-reset-btn" type="button" class="btn-ghost" hidden>Limpiar filtro</button>
               </div>
             </div>
 
@@ -412,27 +404,23 @@
                   <thead>
                     <tr>
                       <th>Fecha ↓</th>
-                      <th>Sala y Empresa</th>
+                      <th>Sala y empresa</th>
                       <th>Ubicación</th>
                       <th>Compañeros</th>
-                      <th class="col-num">Media Grupo</th>
-                      <th class="col-num">Mi Nota</th>
+                      <th class="col-num">Media grupal</th>
+                      <th class="col-num">Mi nota</th>
                       <th class="col-num">Valoración</th>
                     </tr>
                   </thead>
-                  <tbody id="personal-tbody">
-                    <!-- Filas paginadas de las salas visitadas por el usuario -->
-                  </tbody>
+                  <tbody id="personal-tbody"></tbody>
                 </table>
               </div>
 
-              <div class="pagination-bar" id="personal-pagination">
-                <!-- Controles de paginación personal -->
-              </div>
+              <div class="pagination-bar" id="personal-pagination"></div>
             </div>
 
-            <!-- Estadísticas personales detalladas -->
-            <div id="personal-stats-anchor" class="section-header" style="margin-top:0.5rem">
+            <!-- Detailed personal analytics -->
+            <div id="personal-stats-anchor" class="section-header section-header-spaced">
               <div>
                 <span class="section-kicker">MIS ESTADÍSTICAS PERSONALES</span>
                 <h3>Radiografía individual y favoritos</h3>
@@ -440,7 +428,6 @@
             </div>
 
             <div class="stats-bento">
-              <!-- Radar personal vs Grupo -->
               <article class="panel-card">
                 <div class="panel-card-head">
                   <div>
@@ -453,7 +440,6 @@
                 </div>
               </article>
 
-              <!-- Evolución anual personal -->
               <article class="panel-card">
                 <div class="panel-card-head">
                   <div>
@@ -466,7 +452,6 @@
                 </div>
               </article>
 
-              <!-- Top 5 Personal -->
               <article class="panel-card">
                 <div class="panel-card-head">
                   <div>
@@ -477,7 +462,6 @@
                 <div id="personal-top-list" class="dash-list"></div>
               </article>
 
-              <!-- Compañeros y temáticas favoritas -->
               <article class="panel-card">
                 <div class="panel-card-head">
                   <div>
@@ -492,9 +476,9 @@
         </section>
 
         <!-- =====================================================
-             SECCIÓN 2: LISTADO DE SALAS VISITADAS
+             SECTION 3: VISITED ROOMS HISTORY
              ===================================================== -->
-        <section id="view-visitadas" class="app-view" data-section="visitadas" hidden aria-labelledby="heading-visited">
+        <section id="view-visited" class="app-view" data-section="visited" hidden aria-labelledby="heading-visited">
           <div class="section-header section-header-wrap">
             <div>
               <span class="section-kicker">HISTORIAL COMPLETO</span>
@@ -506,7 +490,7 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-                <input id="visited-search" type="search" placeholder="Buscar sala, empresa o ciudad…" />
+                <input id="visited-search" type="search" placeholder="Buscar sala, empresa o ciudad…" aria-label="Buscar sala visitada" />
               </div>
 
               <select id="visited-member-filter" class="select-input" aria-label="Filtrar por miembro">
@@ -529,7 +513,7 @@
                 <option value="50">50 / pág.</option>
               </select>
 
-              <button id="visited-reset-btn" type="button" class="btn-ghost btn-sm" hidden>Limpiar filtro</button>
+              <button id="visited-reset-btn" type="button" class="btn-ghost" hidden>Limpiar filtro</button>
             </div>
           </div>
 
@@ -539,33 +523,27 @@
                 <thead>
                   <tr>
                     <th>Fecha ↓</th>
-                    <th>Sala y Empresa</th>
+                    <th>Sala y empresa</th>
                     <th>Ubicación</th>
                     <th>Temática</th>
                     <th>De nosotros</th>
                     <th>Resultado</th>
-                    <th class="col-num">Nota Media</th>
+                    <th class="col-num">Nota media</th>
                   </tr>
                 </thead>
-                <tbody id="visited-tbody">
-                  <!-- Filas paginadas -->
-                </tbody>
+                <tbody id="visited-tbody"></tbody>
               </table>
             </div>
 
-            <div class="pagination-bar" id="visited-pagination">
-              <!-- Controles de paginación -->
-            </div>
+            <div class="pagination-bar" id="visited-pagination"></div>
           </div>
         </section>
 
         <!-- =====================================================
-             SECCIÓN 3: SALAS PENDIENTES POR PROVINCIA
+             SECTION 4: PENDING ROOMS & UPCOMING RESERVATIONS
              ===================================================== -->
-        <section id="view-pendientes" class="app-view" data-section="pendientes" hidden aria-labelledby="heading-pending">
-          <div id="upcoming-section-wrap" class="upcoming-section-wrap" hidden>
-            <!-- Reservas futuras si existen -->
-          </div>
+        <section id="view-pending" class="app-view" data-section="pending" hidden aria-labelledby="heading-pending">
+          <div id="upcoming-section-wrap" class="upcoming-section-wrap" hidden></div>
 
           <div class="section-header section-header-wrap">
             <div>
@@ -578,7 +556,7 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-                <input id="pending-search" type="search" placeholder="Buscar sala, empresa o premio TERPECA…" />
+                <input id="pending-search" type="search" placeholder="Buscar sala, empresa o premio TERPECA…" aria-label="Buscar sala pendiente" />
               </div>
 
               <select id="pending-province-select" class="select-input" aria-label="Filtrar pendientes por provincia">
@@ -586,7 +564,7 @@
               </select>
 
               <div class="multiselect-dropdown" id="pending-theme-dropdown">
-                <button type="button" class="multiselect-trigger select-input" id="pending-theme-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar pendientes por temática">
+                <button type="button" class="multiselect-trigger select-input" id="pending-theme-trigger" aria-haspopup="dialog" aria-controls="pending-theme-panel" aria-expanded="false" aria-label="Filtrar pendientes por temática">
                   <span class="multiselect-label" id="pending-theme-label">Todas las temáticas</span>
                   <span class="multiselect-badge" id="pending-theme-badge" hidden>0</span>
                   <svg class="multiselect-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -601,60 +579,50 @@
                       <button type="button" class="btn-ghost btn-xs" id="pending-theme-clear" title="Deseleccionar todas las temáticas">Deseleccionar</button>
                     </div>
                   </div>
-                  <div class="multiselect-options" id="pending-theme-options" role="listbox" aria-multiselectable="true">
-                    <!-- Opciones dinámicas -->
-                  </div>
+                  <div class="multiselect-options" id="pending-theme-options" role="group" aria-label="Lista de temáticas"></div>
                 </div>
               </div>
 
-              <button id="pending-reset-btn" type="button" class="btn-ghost btn-sm" hidden>Limpiar filtro</button>
+              <button id="pending-reset-btn" type="button" class="btn-ghost" hidden>Limpiar filtro</button>
             </div>
           </div>
 
-          <!-- Chips rápidos de provincias -->
-          <div id="pending-province-chips" class="province-chips" role="group" aria-label="Filtro rápido por provincia">
-            <!-- Renderizado dinámico -->
-          </div>
+          <!-- Quick province filter chips -->
+          <div id="pending-province-chips" class="province-chips" role="group" aria-label="Filtro rápido por provincia"></div>
 
-          <!-- Chips de temáticas activas si hay selección múltiple -->
-          <div id="pending-active-themes" class="active-themes-bar" hidden role="region" aria-label="Temáticas seleccionadas">
-            <!-- Renderizado dinámico -->
-          </div>
+          <!-- Active multi-theme chips -->
+          <div id="pending-active-themes" class="active-themes-bar" hidden role="region" aria-label="Temáticas seleccionadas"></div>
 
-          <div id="pending-grid" class="pending-grid">
-            <!-- Tarjetas de salas pendientes -->
-          </div>
+          <div id="pending-grid" class="pending-grid"></div>
         </section>
 
         <!-- =====================================================
-             SECCIÓN 4: RANKING TOP 10 MEJORES SALAS
+             SECTION 5: TOP 10 HALL OF FAME
              ===================================================== -->
         <section id="view-ranking" class="app-view" data-section="ranking" hidden aria-labelledby="heading-ranking">
           <div class="section-header section-header-wrap">
             <div>
-              <span class="section-kicker">HALL OF FAME · SOLO TOP 10</span>
-              <h3 id="heading-ranking">Ranking general de las 10 mejores salas</h3>
+              <span class="section-kicker">SALÓN DE LA FAMA · TOP 10</span>
+              <h3 id="heading-ranking">Clasificación general de las 10 mejores salas</h3>
             </div>
-            <div class="segmented-control" role="tablist" aria-label="Criterio de ranking">
-              <button type="button" class="seg-btn active" data-rank-mode="media">Media Global</button>
-              <button type="button" class="seg-btn" data-rank-mode="general">Nota General</button>
-              <button type="button" class="seg-btn" data-rank-mode="S">Sara</button>
-              <button type="button" class="seg-btn" data-rank-mode="M">Miguel</button>
-              <button type="button" class="seg-btn" data-rank-mode="R">Rafa</button>
-              <button type="button" class="seg-btn" data-rank-mode="A">Antonio</button>
-              <button type="button" class="seg-btn" data-rank-mode="J">Joan</button>
+            <div class="segmented-control" role="group" aria-label="Criterio de clasificación">
+              <button type="button" class="seg-btn active" aria-pressed="true" data-rank-mode="average">Media global</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="general">Nota general</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="S">Sara</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="M">Miguel</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="R">Rafa</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="A">Antonio</button>
+              <button type="button" class="seg-btn" aria-pressed="false" data-rank-mode="J">Joan</button>
             </div>
           </div>
 
-          <div id="top10-grid" class="top10-grid">
-            <!-- Renderizado dinámico de exactamente 10 salas -->
-          </div>
+          <div id="top10-grid" class="top10-grid"></div>
         </section>
 
         <!-- =====================================================
-             SECCIÓN 5: MAPA INTERACTIVO DE CONQUISTAS
+             SECTION 6: INTERACTIVE CONQUEST MAP
              ===================================================== -->
-        <section id="view-mapa" class="app-view" data-section="mapa" hidden aria-labelledby="heading-map">
+        <section id="view-map" class="app-view" data-section="map" hidden aria-labelledby="heading-map">
           <div class="section-header section-header-wrap">
             <div>
               <span class="section-kicker">CARTOGRAFÍA ESCAPISTA</span>
@@ -668,13 +636,13 @@
                 <h4>Mapa interactivo de todas las salas visitadas</h4>
                 <p id="map-subtitle" class="panel-sub">Agrupación inteligente por ciudad y local</p>
               </div>
-              <div class="map-quick-btns">
-                <button type="button" class="chip-btn active" data-map-view="spain">🇪🇸 España</button>
-                <button type="button" class="chip-btn" data-map-view="all">🌍 Todas (+ Praga)</button>
-                <button type="button" class="chip-btn" data-map-view="madrid">Madrid</button>
-                <button type="button" class="chip-btn" data-map-view="barcelona">Barcelona</button>
-                <button type="button" class="chip-btn" data-map-view="norte">Norte</button>
-                <button type="button" class="chip-btn" data-map-view="valencia">Valencia</button>
+              <div class="map-quick-btns" role="group" aria-label="Vistas rápidas del mapa">
+                <button type="button" class="chip-btn active" aria-pressed="true" data-map-view="spain">🇪🇸 España</button>
+                <button type="button" class="chip-btn" aria-pressed="false" data-map-view="all">🌍 Todas (+ Praga)</button>
+                <button type="button" class="chip-btn" aria-pressed="false" data-map-view="madrid">Madrid</button>
+                <button type="button" class="chip-btn" aria-pressed="false" data-map-view="barcelona">Barcelona</button>
+                <button type="button" class="chip-btn" aria-pressed="false" data-map-view="north">Norte</button>
+                <button type="button" class="chip-btn" aria-pressed="false" data-map-view="valencia">Valencia</button>
               </div>
             </div>
             <div id="visited-map" class="visited-map visited-map-lg" aria-label="Mapa interactivo de salas visitadas"></div>
@@ -704,9 +672,9 @@
         </section>
 
         <!-- =====================================================
-             SECCIÓN 6: EQUIPO Y ALINEACIONES
+             SECTION 7: TEAM MEMBERS & ICONIC LINEUPS
              ===================================================== -->
-        <section id="view-equipo" class="app-view" data-section="equipo" hidden aria-labelledby="heading-members">
+        <section id="view-team" class="app-view" data-section="team" hidden aria-labelledby="heading-members">
           <div class="section-header section-header-wrap">
             <div>
               <span class="section-kicker">RECUENTO DE SALAS</span>
@@ -715,12 +683,9 @@
             <p class="section-hint">Haz clic en cualquier integrante para filtrar sus salas en el historial de visitadas.</p>
           </div>
 
-          <div id="members-grid" class="members-grid">
-            <!-- Renderizado dinámico -->
-          </div>
+          <div id="members-grid" class="members-grid"></div>
 
           <div class="stats-bento view-subgrid">
-            <!-- Alineaciones más habituales del equipo -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -731,7 +696,6 @@
               <div id="squads-list" class="stat-bars-list"></div>
             </article>
 
-            <!-- Efectividad e hitos por integrante -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -745,9 +709,9 @@
         </section>
 
         <!-- =====================================================
-             SECCIÓN 7: ESTADÍSTICAS AVANZADAS Y CRONOLOGÍA
+             SECTION 8: ADVANCED ANALYTICS & ANNUAL TIMELINE
              ===================================================== -->
-        <section id="view-estadisticas" class="app-view" data-section="estadisticas" hidden aria-labelledby="heading-stats">
+        <section id="view-stats" class="app-view" data-section="stats" hidden aria-labelledby="heading-stats">
           <div class="section-header">
             <div>
               <span class="section-kicker">LABORATORIO ESTADÍSTICO</span>
@@ -755,7 +719,6 @@
             </div>
           </div>
 
-          <!-- Panel ancho: Evolución por Año -->
           <article class="panel-card">
             <div class="panel-card-head">
               <div>
@@ -771,12 +734,11 @@
           </article>
 
           <div class="stats-bento view-subgrid">
-            <!-- Radar 7 criterios -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
                   <h4>Perfil de valoraciones (7 dimensiones)</h4>
-                  <p class="panel-sub">Comparativa Media Global y valoraciones individuales por miembro</p>
+                  <p class="panel-sub">Comparativa de la media global y valoraciones individuales por miembro</p>
                 </div>
               </div>
               <div class="chart-box chart-box-radar">
@@ -784,11 +746,10 @@
               </div>
             </article>
 
-            <!-- Temáticas: Visitadas vs Pendientes -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
-                  <h4>ADN de temáticas (Jugadas vs Pendientes)</h4>
+                  <h4>ADN de temáticas (jugadas frente a pendientes)</h4>
                   <p class="panel-sub">Géneros más frecuentados y lo que viene en camino</p>
                 </div>
               </div>
@@ -797,7 +758,6 @@
               </div>
             </article>
 
-            <!-- Empresas más visitadas y mejor valoradas -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -808,7 +768,6 @@
               <div id="companies-list" class="stat-bars-list"></div>
             </article>
 
-            <!-- Distribución de puntuaciones y éxito -->
             <article class="panel-card">
               <div class="panel-card-head">
                 <div>
@@ -832,7 +791,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL DE DETALLE DE SALA
+       ROOM DETAIL MODAL
        ========================================================= -->
   <div id="room-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-room-title">
     <div class="modal-card modal-card-wide">
@@ -842,7 +801,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL DE VALORACIÓN PERSONAL (SOLO SALAS VISITADAS)
+       PERSONAL 7-DIMENSION RATING MODAL
        ========================================================= -->
   <div id="rating-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rating-modal-title">
     <div class="modal-card rating-modal-card">
@@ -851,14 +810,12 @@
     </div>
   </div>
 
-  <!-- Scripts externos -->
+  <!-- Third-party runtime libraries -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
-  <!-- Datos geográficos, catálogo web de salas y lógica de la aplicación -->
-  <script src="locations.js"></script>
-  <script src="rooms-catalog.js"></script>
-  <script src="app.js"></script>
+  <!-- Modular ES application entrypoint -->
+  <script type="module" src="./js/main.js"></script>
 </body>
 </html>
